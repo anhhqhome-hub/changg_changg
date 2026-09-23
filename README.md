@@ -128,3 +128,9 @@ Playwright includes a critical public route smoke test. Extend it after seeding 
 - Email notification channel
 - More granular rubrics and grade revision history UI
 - Full Playwright scenarios for student registration, admin approval, assignment, autosave, grading, and result release
+
+## Vercel zero-config SQLite demo mode
+
+The app keeps SQLite for local development. When Vercel runs with a `file:` `DATABASE_URL`, the server automatically copies the bundled `prisma/dev.db` template to `/tmp/changg-changg/dev.db` and uses that writable copy. `BETTER_AUTH_URL` is also derived from Vercel when it is missing or still points to localhost, and local uploads are redirected to `/tmp/changg-changg/uploads`.
+
+This mode is intended for demos and smoke tests only: Vercel `/tmp` storage is ephemeral and is not shared across instances, so database writes and uploaded files are not durable. For persistent production data, set `DATABASE_URL` to a remote `libsql://...` URL and optionally set `DATABASE_AUTH_TOKEN`; no code change is required.
