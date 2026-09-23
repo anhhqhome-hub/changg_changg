@@ -21,3 +21,10 @@ This revision fixes the `Failed to collect page data` failure caused by database
 ## Important
 
 The `/tmp` database mode is still ephemeral and is intended for demo/testing on Vercel. For persistent production data, set `DATABASE_URL=libsql://...` and `DATABASE_AUTH_TOKEN=...`.
+
+## V3 - Turbopack filesystem tracing fix
+
+- Removed dynamic `path.resolve(process.cwd(), value)` filesystem resolution from `runtime-database.ts`.
+- Vercel SQLite fallback now copies only the statically known `prisma/dev.db` template to `/tmp/changg-changg/dev.db`.
+- `next.config.ts` keeps `prisma/dev.db` in `outputFileTracingIncludes`, so the runtime template is explicitly bundled.
+- Removed the accidental empty root-level `dev.db`; `prisma/dev.db` is the only SQLite template.

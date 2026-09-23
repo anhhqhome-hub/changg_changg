@@ -29,7 +29,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (asset.protected && !canRead) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   const resolved = await storageProvider.resolve(asset.storageKey);
   if (!resolved) return NextResponse.json({ error: "FILE_MISSING" }, { status: 404 });
-  const bytes = await readFile(resolved);
+  // The resolved media path is runtime data (for Vercel it lives under /tmp),
+  // so it must not participate in Turbopack output tracing.
+  const bytes = await readFile(/* turbopackIgnore: true */ resolved);
   return new NextResponse(bytes, {
     headers: {
       "content-type": asset.mimeType,

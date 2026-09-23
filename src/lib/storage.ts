@@ -39,8 +39,10 @@ export class LocalStorageProvider implements StorageProvider {
     const storageKey = `${safeFolder}/${crypto.randomUUID()}${extension}`;
     const destination = path.resolve(this.root, storageKey);
     if (!destination.startsWith(this.root)) throw new Error("INVALID_STORAGE_KEY");
-    await mkdir(path.dirname(destination), { recursive: true });
-    await writeFile(destination, Buffer.from(await file.arrayBuffer()));
+    const destinationDir = path.dirname(destination);
+    // Runtime upload paths are intentionally dynamic and live outside the deployment bundle.
+    await mkdir(/* turbopackIgnore: true */ destinationDir, { recursive: true });
+    await writeFile(/* turbopackIgnore: true */ destination, Buffer.from(await file.arrayBuffer()));
     return {
       storageKey,
       originalFilename: file.name,
@@ -51,14 +53,14 @@ export class LocalStorageProvider implements StorageProvider {
 
   async delete(storageKey: string) {
     const resolved = await this.resolve(storageKey);
-    if (resolved) await unlink(resolved).catch(() => undefined);
+    if (resolved) await unlink(/* turbopackIgnore: true */ resolved).catch(() => undefined);
   }
 
   async resolve(storageKey: string) {
     const resolved = path.resolve(this.root, storageKey);
     if (!resolved.startsWith(this.root)) return null;
     try {
-      await stat(resolved);
+      await stat(/* turbopackIgnore: true */ resolved);
       return resolved;
     } catch {
       return null;
