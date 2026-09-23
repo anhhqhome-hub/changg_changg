@@ -39,3 +39,9 @@ The `/tmp` database mode is still ephemeral and is intended for demo/testing on 
 - Error UI now prints the Next.js digest and logs the client error to the browser console.
 
 For durable production writes, use a shared remote database (`libsql://...`/Turso or another persistent SQL service). Vercel `/tmp` remains demo-only storage.
+
+## V5 - TypeScript stack overflow fix
+
+- Replaced the generated `embedded-demo-db.ts` chain containing thousands of `+` binary expressions with a JSON-backed Base64 asset.
+- This avoids `RangeError: Maximum call stack size exceeded` in TypeScript 5.9.x during Next.js production type checking.
+- The embedded SQLite bytes are unchanged and still initialize the Vercel `/tmp` demo database at runtime.
