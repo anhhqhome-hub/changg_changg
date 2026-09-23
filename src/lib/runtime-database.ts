@@ -19,6 +19,11 @@ function findTemplateDatabase(configuredUrl: string) {
   return candidates.find((candidate) => candidate !== VERCEL_RUNTIME_DB && existsSync(candidate));
 }
 
+function isNextBuildPhase() {
+  const lifecycle = process.env.npm_lifecycle_event?.toLowerCase();
+  return lifecycle === "build" || process.env.NEXT_PHASE === "phase-production-build";
+}
+
 function prepareVercelSqlite(configuredUrl: string) {
   if (!existsSync(VERCEL_RUNTIME_DB)) {
     const template = findTemplateDatabase(configuredUrl);
@@ -39,7 +44,10 @@ export function resolveDatabaseConnection(configuredUrl: string, authToken?: str
   const isFileDatabase = configuredUrl.startsWith("file:");
   const isVercel = process.env.VERCEL === "1";
 
-  if (isFileDatabase && isVercel) {
+  // During `next build`, Next imports route/server modules while collecting page data.
+  // Do not touch /tmp or copy files at module-evaluation time. The checked-in SQLite
+  // template is readable during the build and runtime preparation happens lazily later.
+  if (isFileDatabase && isVercel && !isNextBuildPhase()) {
     return {
       url: prepareVercelSqlite(configuredUrl),
       authToken: undefined,

@@ -5,6 +5,8 @@ import { Toaster } from "sonner";
 import "@/app/globals.css";
 import { isLocale, type Locale } from "@/i18n/config";
 
+export const dynamic = "force-dynamic";
+
 const beVietnam = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700"],

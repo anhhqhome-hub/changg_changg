@@ -1,3 +1,6 @@
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { readFile } from "node:fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";

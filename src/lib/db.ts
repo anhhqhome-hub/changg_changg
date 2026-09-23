@@ -7,20 +7,32 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-const connection = resolveDatabaseConnection(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
+function createPrismaClient() {
+  const connection = resolveDatabaseConnection(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
+  const adapter = new PrismaLibSql({
+    url: connection.url,
+    authToken: connection.authToken
+  });
 
-const adapter = new PrismaLibSql({
-  url: connection.url,
-  authToken: connection.authToken
-});
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+  return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"]
   });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
 }
+
+export function getPrismaClient() {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+  return globalForPrisma.prisma;
+}
+
+// Next.js imports App Routes while collecting build metadata. Exporting a lazy
+// proxy prevents database/filesystem setup merely because a route module is imported.
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const client = getPrismaClient();
+    const value = Reflect.get(client, property, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  }
+});
