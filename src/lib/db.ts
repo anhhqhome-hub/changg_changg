@@ -7,14 +7,18 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const adapter = new PrismaLibSql({
-  url: env.DATABASE_URL
+  url: env.DATABASE_URL,
+  authToken: env.DATABASE_AUTH_TOKEN
 });
 
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"]
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["warn", "error"]
+        : ["error"]
   });
 
 if (process.env.NODE_ENV !== "production") {
