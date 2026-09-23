@@ -1,0 +1,591 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum AccountStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum Skill {
+  LISTENING
+  SPEAKING
+  READING
+  WRITING
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  FILL_BLANK
+  SHORT_ANSWER
+  ESSAY
+  MATCHING
+  ORDERING
+  LISTENING_CHOICE
+  LISTENING_FILL_BLANK
+  SPEAKING_RECORDING
+  READING_SINGLE_CHOICE
+  READING_MULTIPLE_CHOICE
+}
+
+enum ExamLifecycle {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ResultsReleaseMode {
+  IMMEDIATE
+  AFTER_DEADLINE
+  MANUAL
+}
+
+enum AttemptStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  AUTO_SUBMITTED
+  GRADING
+  GRADED
+}
+
+enum AssignmentTargetType {
+  CLASS
+  STUDENT
+}
+
+enum NotificationType {
+  INFO
+  EXAM_ASSIGNED
+  DEADLINE_APPROACHING
+  RESULT_RELEASED
+  SUBMISSION_RECEIVED
+  ACCOUNT_PENDING
+}
+
+model User {
+  id              String        @id @default(cuid())
+  name            String
+  email           String        @unique
+  emailVerified   Boolean       @default(false)
+  image           String?
+  role            Role          @default(STUDENT)
+  status          AccountStatus @default(PENDING)
+  preferredLocale String        @default("vi")
+  lastLoginAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  sessions           Session[]
+  accounts           Account[]
+  studentProfile     StudentProfile?
+  teacherProfile     TeacherProfile?
+  classesTaught      Class[]           @relation("TeacherClasses")
+  memberships        ClassMembership[]
+  questions          QuestionBankItem[] @relation("CreatedQuestions")
+  mediaUploads       MediaAsset[]       @relation("UploadedMedia")
+  examsCreated       Exam[]             @relation("CreatedExams")
+  attempts           ExamAttempt[]      @relation("StudentAttempts")
+  notifications      Notification[]
+  auditLogs          AuditLog[]         @relation("ActorAuditLogs")
+  manualGradesGiven  ManualGrade[]      @relation("TeacherManualGrades")
+  assignmentsCreated ExamAssignment[]   @relation("AssignmentCreator")
+  teacherTasks       TeacherTask[]      @relation("TeacherTasks")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model StudentProfile {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId      String?
+  school        School?   @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  studentCode   String    @unique
+  phoneNumber   String?
+  dateOfBirth   DateTime?
+  gender        String?
+  schoolName    String?
+  gradeLevel    String?
+  englishLevel  String?
+  parentContact String?
+  notes         String?
+
+  @@index([schoolId])
+}
+
+model School {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  code      String?          @unique
+  address   String?
+  contact   String?
+  active    Boolean          @default(true)
+  students  StudentProfile[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model TeacherProfile {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teacherCode    String  @unique
+  displayName    String
+  bio            String?
+  phoneNumber    String?
+  specialization String?
+}
+
+model Class {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  archivedAt  DateTime?
+  teacherId   String
+  teacher     User              @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  memberships ClassMembership[]
+  assignments ExamAssignment[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([teacherId])
+}
+
+model ClassMembership {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([classId, studentId])
+  @@index([studentId])
+}
+
+model MediaAsset {
+  id               String         @id @default(cuid())
+  storageKey       String         @unique
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  durationSeconds  Int?
+  uploadedById     String
+  uploadedBy       User           @relation("UploadedMedia", fields: [uploadedById], references: [id], onDelete: Cascade)
+  protected        Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  questionGroups   QuestionGroup[]
+  attemptAnswers   AttemptAnswer[]
+
+  @@index([uploadedById])
+}
+
+model ReadingPassage {
+  id           String          @id @default(cuid())
+  title        String
+  body         String
+  instructions String?
+  imageAssetId String?
+  groups       QuestionGroup[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model QuestionBankItem {
+  id                 String               @id @default(cuid())
+  title              String
+  prompt             String
+  instructions       String?
+  skill              Skill
+  questionType       QuestionType
+  difficulty         Difficulty           @default(MEDIUM)
+  points             Float                @default(1)
+  tagsJson           String               @default("[]")
+  cefrLevel          String?
+  topic              String?
+  grammarArea        String?
+  vocabularyTopic    String?
+  correctAnswersJson String?
+  settingsJson       String               @default("{}")
+  createdById        String
+  createdBy          User                 @relation("CreatedQuestions", fields: [createdById], references: [id], onDelete: Cascade)
+  options            QuestionBankOption[]
+  examQuestions      ExamQuestion[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([createdById])
+  @@index([skill, questionType])
+}
+
+model QuestionBankOption {
+  id         String           @id @default(cuid())
+  questionId String
+  question   QuestionBankItem @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label      String
+  value      String
+  isCorrect  Boolean          @default(false)
+  sortOrder  Int              @default(0)
+
+  @@index([questionId])
+}
+
+model Rubric {
+  id          String            @id @default(cuid())
+  name        String
+  skill       Skill
+  description String?
+  createdById String
+  criteria    RubricCriterion[]
+  questions   ExamQuestion[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model RubricCriterion {
+  id          String           @id @default(cuid())
+  rubricId    String
+  rubric      Rubric           @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  maxPoints   Float
+  descriptors String?
+  sortOrder   Int              @default(0)
+  grades      CriterionGrade[]
+}
+
+model Exam {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  createdById String
+  createdBy   User          @relation("CreatedExams", fields: [createdById], references: [id], onDelete: Cascade)
+  versions    ExamVersion[]
+  assignments ExamAssignment[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([createdById])
+}
+
+model ExamVersion {
+  id                            String             @id @default(cuid())
+  examId                        String
+  exam                          Exam               @relation(fields: [examId], references: [id], onDelete: Cascade)
+  versionNumber                 Int
+  status                        ExamLifecycle      @default(DRAFT)
+  title                         String
+  description                   String?
+  instructions                  String?
+  availableFrom                 DateTime?
+  deadline                      DateTime?
+  timeLimitMinutes              Int?
+  attemptsAllowed               Int                @default(1)
+  passingScore                  Float?
+  shuffleQuestions              Boolean            @default(false)
+  shuffleOptions                Boolean            @default(false)
+  showScoreAfterSubmit          Boolean            @default(true)
+  showCorrectAnswersAfterSubmit Boolean            @default(false)
+  allowLateSubmission           Boolean            @default(false)
+  resultsReleaseMode            ResultsReleaseMode @default(IMMEDIATE)
+  publishedAt                   DateTime?
+  sections                      ExamSection[]
+  assignments                   ExamAssignment[]
+  attempts                      ExamAttempt[]
+  createdAt                     DateTime           @default(now())
+  updatedAt                     DateTime           @updatedAt
+
+  @@unique([examId, versionNumber])
+  @@index([status])
+}
+
+model ExamSection {
+  id        String         @id @default(cuid())
+  versionId String
+  version   ExamVersion    @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  skill     Skill
+  title     String
+  enabled   Boolean        @default(true)
+  sortOrder Int            @default(0)
+  groups    QuestionGroup[]
+
+  @@index([versionId, sortOrder])
+}
+
+model QuestionGroup {
+  id               String          @id @default(cuid())
+  sectionId        String
+  section          ExamSection     @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title            String?
+  instructions     String?
+  mediaAssetId     String?
+  mediaAsset       MediaAsset?     @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+  readingPassageId String?
+  readingPassage   ReadingPassage? @relation(fields: [readingPassageId], references: [id], onDelete: SetNull)
+  sortOrder        Int             @default(0)
+  questions        ExamQuestion[]
+
+  @@index([sectionId, sortOrder])
+}
+
+model ExamQuestion {
+  id                 String             @id @default(cuid())
+  groupId            String
+  group              QuestionGroup      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  bankItemId         String?
+  bankItem           QuestionBankItem?  @relation(fields: [bankItemId], references: [id], onDelete: SetNull)
+  title              String
+  prompt             String
+  instructions       String?
+  skill              Skill
+  questionType       QuestionType
+  difficulty         Difficulty         @default(MEDIUM)
+  points             Float              @default(1)
+  tagsJson           String             @default("[]")
+  correctAnswersJson String?
+  settingsJson       String             @default("{}")
+  rubricId           String?
+  rubric             Rubric?            @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  sortOrder          Int                @default(0)
+  options            ExamQuestionOption[]
+  answers            AttemptAnswer[]
+
+  @@index([groupId, sortOrder])
+  @@index([skill, questionType])
+}
+
+model ExamQuestionOption {
+  id         String       @id @default(cuid())
+  questionId String
+  question   ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label      String
+  value      String
+  isCorrect  Boolean      @default(false)
+  sortOrder  Int          @default(0)
+
+  @@index([questionId])
+}
+
+model ExamAssignment {
+  id          String               @id @default(cuid())
+  examId      String
+  exam        Exam                 @relation(fields: [examId], references: [id], onDelete: Cascade)
+  versionId   String
+  version     ExamVersion          @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  targetType  AssignmentTargetType
+  classId     String?
+  class       Class?               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentId   String?
+  createdById String
+  createdBy   User                 @relation("AssignmentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  attempts    ExamAttempt[]
+  createdAt   DateTime             @default(now())
+
+  @@index([versionId])
+  @@index([classId])
+  @@index([studentId])
+}
+
+model ExamAttempt {
+  id             String          @id @default(cuid())
+  assignmentId   String
+  assignment     ExamAssignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        User            @relation("StudentAttempts", fields: [studentId], references: [id], onDelete: Cascade)
+  versionId      String
+  version        ExamVersion     @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  attemptNumber  Int
+  startedAt      DateTime        @default(now())
+  expiresAt      DateTime?
+  submittedAt    DateTime?
+  status         AttemptStatus   @default(IN_PROGRESS)
+  autoScore      Float           @default(0)
+  manualScore    Float           @default(0)
+  finalScore     Float           @default(0)
+  totalPoints    Float           @default(0)
+  timeSpentSec   Int?
+  releaseResults Boolean         @default(false)
+  answers        AttemptAnswer[]
+  manualGrade    ManualGrade?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([assignmentId, studentId, attemptNumber])
+  @@index([studentId, status])
+  @@index([versionId])
+}
+
+model AttemptAnswer {
+  id                    String        @id @default(cuid())
+  attemptId             String
+  attempt               ExamAttempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId            String
+  question              ExamQuestion  @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  selectedOptionIdsJson String?
+  textAnswer            String?
+  blankAnswersJson      String?
+  matchingAnswersJson   String?
+  orderingAnswersJson   String?
+  audioAssetId          String?
+  audioAsset            MediaAsset?   @relation(fields: [audioAssetId], references: [id], onDelete: SetNull)
+  isFlagged             Boolean       @default(false)
+  clientUpdatedAt       DateTime?
+  score                 Float?
+  feedback              String?
+  updatedAt             DateTime      @updatedAt
+  createdAt             DateTime      @default(now())
+
+  @@unique([attemptId, questionId])
+  @@index([questionId])
+}
+
+model ManualGrade {
+  id          String           @id @default(cuid())
+  attemptId   String           @unique
+  attempt     ExamAttempt      @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  teacherId   String
+  teacher     User             @relation("TeacherManualGrades", fields: [teacherId], references: [id], onDelete: Cascade)
+  score       Float            @default(0)
+  comments    String?
+  finalizedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  criteria    CriterionGrade[]
+
+  @@index([teacherId])
+}
+
+model CriterionGrade {
+  id          String          @id @default(cuid())
+  gradeId     String
+  grade       ManualGrade     @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  criterionId String
+  criterion   RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+  score       Float
+  comments    String?
+
+  @@unique([gradeId, criterionId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(INFO)
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+}
+
+model TeacherTask {
+  id          String    @id @default(cuid())
+  teacherId   String
+  teacher     User      @relation("TeacherTasks", fields: [teacherId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  priority    String    @default("MEDIUM")
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([teacherId, completedAt])
+  @@index([dueAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actor       User?    @relation("ActorAuditLogs", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String
+  entityId    String
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+}
+
+model SiteSetting {
+  id                 String   @id @default("singleton")
+  founderName        String?
+  founderTitle       String?
+  founderTitleEn     String?
+  founderQuote       String?
+  founderQuoteEn     String?
+  founderPhotoUrl    String?
+  updatedAt          DateTime @updatedAt
+}

@@ -1,0 +1,10 @@
+.next
+node_modules
+generated
+prisma/dev.db
+prisma/dev.db-journal
+dev.db
+storage/uploads
+.env
+playwright-report
+test-results
