@@ -134,3 +134,31 @@ Playwright includes a critical public route smoke test. Extend it after seeding 
 The app keeps SQLite for local development. When Vercel runs with a `file:` `DATABASE_URL`, the server automatically copies the bundled `prisma/dev.db` template to `/tmp/changg-changg/dev.db` and uses that writable copy. `BETTER_AUTH_URL` is also derived from Vercel when it is missing or still points to localhost, and local uploads are redirected to `/tmp/changg-changg/uploads`.
 
 This mode is intended for demos and smoke tests only: Vercel `/tmp` storage is ephemeral and is not shared across instances, so database writes and uploaded files are not durable. For persistent production data, set `DATABASE_URL` to a remote `libsql://...` URL and optionally set `DATABASE_AUTH_TOKEN`; no code change is required.
+
+## Vercel demo database diagnostics
+
+When `DATABASE_URL` still uses `file:...` on Vercel, this revision boots a demo SQLite database in `/tmp` from an embedded template. This is intended only for demos/testing because Vercel function-local filesystem state is not durable or shared.
+
+After deployment, open:
+
+```text
+/api/health/database
+```
+
+Expected demo response:
+
+```json
+{
+  "ok": true,
+  "databaseMode": "vercel-demo",
+  "ephemeral": true,
+  "hasSeedUser": true
+}
+```
+
+For persistent deployment, configure a shared libSQL/Turso database:
+
+```env
+DATABASE_URL="libsql://..."
+DATABASE_AUTH_TOKEN="..."
+```

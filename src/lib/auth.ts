@@ -13,6 +13,17 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true
   },
+  // Vercel demo mode can run on multiple function instances. Keep a signed
+  // session cache in the browser so ordinary session checks do not require
+  // the same ephemeral SQLite instance that handled sign-in.
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 7 * 24 * 60 * 60,
+      refreshCache: true,
+      strategy: "compact"
+    }
+  },
   user: {
     additionalFields: {
       role: {

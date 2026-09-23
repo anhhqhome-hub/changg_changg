@@ -28,3 +28,14 @@ The `/tmp` database mode is still ephemeral and is intended for demo/testing on 
 - Vercel SQLite fallback now copies only the statically known `prisma/dev.db` template to `/tmp/changg-changg/dev.db`.
 - `next.config.ts` keeps `prisma/dev.db` in `outputFileTracingIncludes`, so the runtime template is explicitly bundled.
 - Removed the accidental empty root-level `dev.db`; `prisma/dev.db` is the only SQLite template.
+
+## V4 - runtime error hardening
+
+- Embedded the demo SQLite template in the server bundle; Vercel no longer depends on tracing `prisma/dev.db` into each function.
+- Vercel demo instances materialize the embedded DB into `/tmp/changg-changg/dev.db` on first database access.
+- Enabled Better Auth signed session cookie caching to make session reads less dependent on the same ephemeral function instance.
+- Founder/site settings now fail soft so a decorative DB read cannot take down the login page.
+- Added `/api/health/database` for safe database diagnostics (no secrets are returned).
+- Error UI now prints the Next.js digest and logs the client error to the browser console.
+
+For durable production writes, use a shared remote database (`libsql://...`/Turso or another persistent SQL service). Vercel `/tmp` remains demo-only storage.

@@ -15,7 +15,10 @@ export type AppUser = {
 };
 
 export async function getCurrentUser(): Promise<AppUser | null> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({ headers: await headers() }).catch((error) => {
+    console.error("[auth] Session lookup failed.", error);
+    return null;
+  });
   if (!session?.user?.id) return null;
   return prisma.user.findUnique({
     where: { id: session.user.id },

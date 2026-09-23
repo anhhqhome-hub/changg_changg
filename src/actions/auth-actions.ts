@@ -51,11 +51,21 @@ export async function signInAction(_state: LoginActionState, formData: FormData)
   if (!result?.user?.id) {
     return { error: "Invalid email or password." };
   }
-  await prisma.user.update({
-    where: { id: result.user.id },
-    data: { lastLoginAt: new Date() }
-  });
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: result.user.id } });
+  const user = await (async () => {
+    try {
+      await prisma.user.update({
+        where: { id: result.user.id },
+        data: { lastLoginAt: new Date() }
+      });
+      return await prisma.user.findUniqueOrThrow({ where: { id: result.user.id } });
+    } catch (error) {
+      console.error("[login] User database lookup failed after authentication.", error);
+      return null;
+    }
+  })();
+  if (!user) {
+    return { error: "The database is temporarily unavailable. Please retry." };
+  }
   const locale = user.preferredLocale || "vi";
   if (user.status === "PENDING") redirect(`/${locale}/pending`);
   if (user.status === "REJECTED") redirect(`/${locale}/rejected`);

@@ -1,9 +1,6 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
-import path from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { EMBEDDED_DEMO_DB_BASE64 } from "@/lib/embedded-demo-db";
 
-// Keep every filesystem path statically scoped. Turbopack can then trace only
-// prisma/dev.db instead of conservatively including the whole project.
-const PROJECT_TEMPLATE_DB = path.join(process.cwd(), "prisma", "dev.db");
 const VERCEL_RUNTIME_DIR = "/tmp/changg-changg";
 const VERCEL_RUNTIME_DB = "/tmp/changg-changg/dev.db";
 
@@ -14,36 +11,40 @@ function isNextBuildPhase() {
 
 function prepareVercelSqlite() {
   if (!existsSync(VERCEL_RUNTIME_DB)) {
-    if (!existsSync(PROJECT_TEMPLATE_DB)) {
-      throw new Error(
-        "SQLite template database was not found at prisma/dev.db. Keep prisma/dev.db in the deployment or configure a persistent libsql DATABASE_URL."
-      );
-    }
-
     mkdirSync(VERCEL_RUNTIME_DIR, { recursive: true });
-    copyFileSync(PROJECT_TEMPLATE_DB, VERCEL_RUNTIME_DB);
+    writeFileSync(VERCEL_RUNTIME_DB, Buffer.from(EMBEDDED_DEMO_DB_BASE64, "base64"));
   }
 
   return `file:${VERCEL_RUNTIME_DB}`;
 }
 
-export function resolveDatabaseConnection(configuredUrl: string, authToken?: string) {
+export type ResolvedDatabaseConnection = {
+  url: string;
+  authToken?: string;
+  ephemeral: boolean;
+  mode: "local-file" | "vercel-demo" | "remote-libsql" | "other";
+};
+
+export function resolveDatabaseConnection(configuredUrl: string, authToken?: string): ResolvedDatabaseConnection {
   const isFileDatabase = configuredUrl.startsWith("file:");
+  const isRemoteLibsql = configuredUrl.startsWith("libsql:") || configuredUrl.startsWith("https:");
   const isVercel = process.env.VERCEL === "1";
 
-  // Next imports route/server modules while collecting build metadata.
-  // Runtime filesystem preparation happens only after deployment receives a request.
+  // During `next build`, never create runtime files. Prisma is initialized lazily,
+  // so the real connection is only needed after a deployed request arrives.
   if (isFileDatabase && isVercel && !isNextBuildPhase()) {
     return {
       url: prepareVercelSqlite(),
       authToken: undefined,
-      ephemeral: true
+      ephemeral: true,
+      mode: "vercel-demo"
     };
   }
 
   return {
     url: configuredUrl,
     authToken: authToken?.trim() || undefined,
-    ephemeral: false
+    ephemeral: false,
+    mode: isRemoteLibsql ? "remote-libsql" : isFileDatabase ? "local-file" : "other"
   };
 }
