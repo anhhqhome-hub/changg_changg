@@ -78,6 +78,8 @@ Rules:
 export async function reviewImportedQuestionsWithGroq(questions: AiQuestion[]) {
   const prompt = `
 Review and normalize these imported English exam questions.
+Preserve the exact number and order of questions.
+When a multiple-choice answer is missing, solve it from the supplied context and return the answer as A, B, C, or D when reasonably confident.
 Return only JSON using this shape:
 {
   "questions": [same normalized question objects],
@@ -117,6 +119,7 @@ async function callGroqJson(prompt: string) {
   if (!env.GROQ_API_KEY) throw new Error("GROQ_API_KEY_MISSING");
   const response = await fetch(`${env.GROQ_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
+    signal: AbortSignal.timeout(45_000),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${env.GROQ_API_KEY}`
@@ -124,6 +127,9 @@ async function callGroqJson(prompt: string) {
     body: JSON.stringify({
       model: env.GROQ_AI_MODEL,
       temperature: 0.35,
+      reasoning_effort: "low",
+      reasoning_format: "hidden",
+      max_completion_tokens: 8192,
       response_format: { type: "json_object" },
       messages: [
         {
@@ -149,6 +155,7 @@ async function callGroqText(prompt: string) {
   if (!env.GROQ_API_KEY) throw new Error("GROQ_API_KEY_MISSING");
   const response = await fetch(`${env.GROQ_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
+    signal: AbortSignal.timeout(45_000),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${env.GROQ_API_KEY}`
@@ -156,6 +163,9 @@ async function callGroqText(prompt: string) {
     body: JSON.stringify({
       model: env.GROQ_AI_MODEL,
       temperature: 0.4,
+      reasoning_effort: "low",
+      reasoning_format: "hidden",
+      max_completion_tokens: 4096,
       messages: [
         {
           role: "system",

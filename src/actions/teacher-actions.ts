@@ -12,6 +12,7 @@ import { askTeacherAgent, generateQuestionsWithGroq, reviewImportedQuestionsWith
 import { prisma } from "@/lib/db";
 import { getOrCreateCurrentAcademicYear } from "@/lib/academic-year";
 import { requireRole } from "@/lib/permissions";
+import { parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
 import { parseJson } from "@/lib/utils";
 
 const localeSchema = z.string().default("vi");
@@ -40,6 +41,12 @@ type ImportedQuestion = {
   options: string[];
   answer: string;
   points: number;
+  groupKey?: string;
+  groupTitle?: string;
+  groupInstructions?: string;
+  passageTitle?: string;
+  passageBody?: string;
+  sourceNumber?: string;
 };
 
 const aiGenerateSchema = z.object({
@@ -179,46 +186,110 @@ export async function toggleTeacherTaskAction(formData: FormData) {
   revalidatePath(`/${locale}/teacher`);
 }
 
-export async function importExamFromFileAction(formData: FormData) {
+export type ImportExamActionState = {
+  error?: string;
+};
+
+export async function importExamFromFileAction(
+  _state: ImportExamActionState,
+  formData: FormData
+): Promise<ImportExamActionState> {
   const locale = localeSchema.parse(formData.get("locale") || "vi");
   const teacher = await requireRole("TEACHER", locale);
   const file = formData.get("file");
-  const title = z.string().min(2).max(160).parse(formData.get("title") || "Đề import từ file");
+  const titleResult = z.string().min(2).max(160).safeParse(formData.get("title") || "Đề import từ file");
   const useAiReview = formData.get("aiReview") === "on";
-  if (!(file instanceof File) || file.size === 0) throw new Error("IMPORT_FILE_REQUIRED");
-  if (file.size > 5 * 1024 * 1024) throw new Error("IMPORT_FILE_TOO_LARGE");
 
-  let importedQuestions = await parseExamImportFile(file);
-  if (importedQuestions.length === 0) throw new Error("IMPORT_EMPTY");
-  const checks = [
-    `Parsed ${importedQuestions.length} questions from ${file.name}`,
-    "Grouped questions by skill",
-    "Created a draft exam for teacher review"
-  ];
-  if (useAiReview) {
-    const reviewed = await reviewImportedQuestionsWithGroq(importedQuestions.map(importedToAiQuestion));
-    importedQuestions = reviewed.questions.map(aiToImportedQuestion);
-    checks.unshift(...reviewed.checks);
+  if (!titleResult.success) {
+    return { error: locale === "en" ? "Enter an exam name between 2 and 160 characters." : "Tên đề phải có từ 2 đến 160 ký tự." };
   }
-  const exam = await createExamFromImportedQuestions({
-    teacherId: teacher.id,
-    title,
-    description: `Được tạo từ file ${file.name}`,
-    sourceLabel: file.name,
-    questions: importedQuestions
-  });
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: locale === "en" ? "Choose a file to import." : "Hãy chọn file đề cần import." };
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: locale === "en" ? "The file must be 5MB or smaller." : "File phải có dung lượng tối đa 5MB." };
+  }
 
-  await prisma.auditLog.create({
-    data: {
-      actorUserId: teacher.id,
-      action: "EXAM_IMPORTED",
-      entityType: "Exam",
-      entityId: exam.id,
-      metadata: JSON.stringify({ fileName: file.name, questionCount: importedQuestions.length, aiReview: useAiReview, checks })
+  let examId: string | null = null;
+  try {
+    let importedQuestions = await parseExamImportFile(file);
+    if (importedQuestions.length === 0) throw new Error("IMPORT_EMPTY");
+
+    const checks = [
+      `Parsed ${importedQuestions.length} questions from ${file.name}`,
+      `Detected ${new Set(importedQuestions.map((question) => question.groupKey).filter(Boolean)).size || importedQuestions.length} question groups`,
+      "Created a draft exam for teacher review"
+    ];
+
+    if (useAiReview) {
+      if (canReviewImportWithAi(importedQuestions)) {
+        try {
+          const reviewed = await reviewImportedQuestionsWithGroq(importedQuestions.map(importedToAiQuestion));
+          if (reviewed.questions.length !== importedQuestions.length) throw new Error("AI_REVIEW_COUNT_MISMATCH");
+          importedQuestions = reviewed.questions.map((question, index) => mergeAiReview(importedQuestions[index], question));
+          checks.unshift(...reviewed.checks);
+        } catch (error) {
+          console.error("[exam-import] AI review skipped after request failure", safeImportError(error));
+          checks.unshift("AI review was unavailable; imported the parsed draft without AI changes.");
+        }
+      } else {
+        const missingAnswerEntries = importedQuestions
+          .map((question, index) => ({ question, index }))
+          .filter(({ question }) => !question.answer.trim() && question.options.length >= 2);
+
+        if (missingAnswerEntries.length > 0 && canReviewMissingAnswersWithAi(missingAnswerEntries.map(({ question }) => question))) {
+          try {
+            const reviewed = await reviewImportedQuestionsWithGroq(
+              missingAnswerEntries.map(({ question }) => importedToAiQuestion(question))
+            );
+            let filled = 0;
+            reviewed.questions.forEach((reviewedQuestion, reviewIndex) => {
+              const entry = missingAnswerEntries[reviewIndex];
+              if (!entry) return;
+              const answer = safeReviewedChoiceAnswer(reviewedQuestion.answer, entry.question.options);
+              if (!answer) return;
+              importedQuestions[entry.index] = { ...entry.question, answer };
+              filled += 1;
+            });
+            checks.unshift(`Large import: deterministic parsing kept the full file; AI filled ${filled}/${missingAnswerEntries.length} missing choice answers only.`);
+          } catch (error) {
+            console.error("[exam-import] Missing-answer AI fallback skipped after request failure", safeImportError(error));
+            checks.unshift("Large import completed without AI fallback. Answers detected from the source file were preserved.");
+          }
+        } else {
+          checks.unshift("AI review skipped for this large import. The full draft and source-marked answers were preserved without a large AI request.");
+        }
+      }
     }
-  });
+
+    const exam = await createExamFromImportedQuestions({
+      teacherId: teacher.id,
+      title: titleResult.data,
+      description: `Được tạo từ file ${file.name}. ${checks[0] ?? ""}`.trim(),
+      sourceLabel: file.name,
+      questions: importedQuestions
+    });
+    examId = exam.id;
+
+    await prisma.auditLog.create({
+      data: {
+        actorUserId: teacher.id,
+        action: "EXAM_IMPORTED",
+        entityType: "Exam",
+        entityId: exam.id,
+        metadata: JSON.stringify({ fileName: file.name, questionCount: importedQuestions.length, aiReview: useAiReview, checks })
+      }
+    });
+  } catch (error) {
+    console.error("[exam-import] Import failed", safeImportError(error));
+    return { error: importErrorMessage(error, locale) };
+  }
+
+  if (!examId) {
+    return { error: locale === "en" ? "The import did not create an exam." : "Import chưa tạo được đề." };
+  }
   revalidatePath(`/${locale}/teacher/exams`);
-  redirect(`/${locale}/teacher/exams/${exam.id}/builder`);
+  redirect(`/${locale}/teacher/exams/${examId}/builder`);
 }
 
 async function legacyImportExamFromFileAction(formData: FormData) {
@@ -785,8 +856,35 @@ async function parseExamImportFile(file: File) {
     return parseCsv(buffer.toString("utf8")).map(normalizeImportRow).filter(isImportedQuestion);
   }
   if (extension === "docx") {
-    const result = await mammoth.extractRawText({ buffer });
-    return parseWordQuestions(result.value);
+    // Quizzi-style Word files encode the correct choice with Word underline.
+    // Mammoth ignores underline by default, so preserve it as <mark> and turn it
+    // into a parser marker before stripping the rest of the HTML.
+    const htmlResult = await mammoth.convertToHtml(
+      { buffer },
+      { styleMap: ["u => mark"] }
+    );
+    const markedText = quizziHtmlToMarkedText(htmlResult.value);
+    const quizziQuestions = parseQuizziWordText(markedText);
+    if (quizziQuestions.length > 0) {
+      return quizziQuestions.map<ImportedQuestion>((question) => ({
+        title: question.title,
+        prompt: question.prompt,
+        skill: "READING",
+        questionType: question.options.length >= 2 ? "READING_SINGLE_CHOICE" : "ESSAY",
+        options: question.options,
+        answer: question.answer ?? "",
+        points: 1,
+        groupKey: question.groupKey,
+        groupTitle: question.groupTitle,
+        groupInstructions: question.groupInstructions,
+        passageTitle: question.passageTitle,
+        passageBody: question.passageBody,
+        sourceNumber: question.sourceNumber
+      }));
+    }
+
+    const rawResult = await mammoth.extractRawText({ buffer });
+    return parseWordQuestions(rawResult.value);
   }
   throw new Error("IMPORT_UNSUPPORTED_FILE");
 }
@@ -832,25 +930,48 @@ async function createExamFromImportedQuestions({
 
   const version = exam.versions[0];
   const sectionBySkill = new Map(version.sections.map((section) => [section.skill, section.id]));
-  for (const [index, question] of questions.entries()) {
-    const sectionId = sectionBySkill.get(question.skill);
+  const groups = new Map<string, { firstIndex: number; questions: ImportedQuestion[] }>();
+
+  questions.forEach((question, index) => {
+    const key = question.groupKey ? `${question.skill}:${question.groupKey}` : `${question.skill}:question-${index + 1}`;
+    const group = groups.get(key);
+    if (group) group.questions.push(question);
+    else groups.set(key, { firstIndex: index, questions: [question] });
+  });
+
+  for (const group of [...groups.values()].sort((a, b) => a.firstIndex - b.firstIndex)) {
+    const first = group.questions[0];
+    const sectionId = sectionBySkill.get(first.skill);
     if (!sectionId) continue;
+
+    const passage = first.passageBody
+      ? await prisma.readingPassage.create({
+          data: {
+            title: first.passageTitle || first.groupTitle || `Passage ${group.firstIndex + 1}`,
+            body: first.passageBody,
+            instructions: first.groupInstructions || null
+          }
+        })
+      : null;
+
     await prisma.questionGroup.create({
       data: {
         sectionId,
-        title: `${sourceLabel} ${index + 1}`,
-        sortOrder: index + 1,
+        title: first.groupTitle || `${sourceLabel} ${group.firstIndex + 1}`,
+        instructions: first.groupInstructions || null,
+        readingPassageId: passage?.id,
+        sortOrder: group.firstIndex + 1,
         questions: {
-          create: {
+          create: group.questions.map((question, questionIndex) => ({
             title: question.title,
             prompt: question.prompt,
             skill: question.skill,
             questionType: question.questionType,
             points: question.points,
-            sortOrder: 1,
+            sortOrder: questionIndex + 1,
             tagsJson: JSON.stringify([sourceLabel.toLocaleLowerCase().includes("ai") ? "ai" : "import"]),
             correctAnswersJson: correctAnswerJson(question),
-            settingsJson: JSON.stringify({ caseSensitive: false, trimWhitespace: true }),
+            settingsJson: JSON.stringify({ caseSensitive: false, trimWhitespace: true, sourceNumber: question.sourceNumber ?? null }),
             options: {
               create: question.options.map((option, optionIndex) => ({
                 label: option,
@@ -859,7 +980,7 @@ async function createExamFromImportedQuestions({
                 isCorrect: isCorrectOption(question.answer, option, optionIndex)
               }))
             }
-          }
+          }))
         }
       }
     });
@@ -867,10 +988,13 @@ async function createExamFromImportedQuestions({
   return exam;
 }
 
-function aiToImportedQuestion(question: AiQuestion): ImportedQuestion {
+function importedToAiQuestion(question: ImportedQuestion): AiQuestion {
+  const context = question.passageBody
+    ? `CONTEXT:\n${question.passageBody}\n\nQUESTION:\n${question.prompt}`
+    : question.prompt;
   return {
     title: question.title,
-    prompt: question.prompt,
+    prompt: context,
     skill: question.skill,
     questionType: question.questionType,
     options: question.options,
@@ -879,16 +1003,52 @@ function aiToImportedQuestion(question: AiQuestion): ImportedQuestion {
   };
 }
 
-function importedToAiQuestion(question: ImportedQuestion): AiQuestion {
+function mergeAiReview(original: ImportedQuestion, reviewed: AiQuestion): ImportedQuestion {
   return {
-    title: question.title,
-    prompt: question.prompt,
-    skill: question.skill,
-    questionType: question.questionType,
-    options: question.options,
-    answer: question.answer,
-    points: question.points
+    ...original,
+    skill: reviewed.skill,
+    questionType: reviewed.questionType,
+    options: reviewed.options.length ? reviewed.options : original.options,
+    answer: reviewed.answer,
+    points: reviewed.points
   };
+}
+
+function canReviewImportWithAi(questions: ImportedQuestion[]) {
+  if (questions.length > 20) return false;
+  const totalChars = questions.reduce((sum, question) => sum + (question.passageBody?.length ?? 0) + question.prompt.length + question.options.join(" ").length, 0);
+  return totalChars <= 16_000;
+}
+
+
+function canReviewMissingAnswersWithAi(questions: ImportedQuestion[]) {
+  if (questions.length === 0 || questions.length > 10) return false;
+  const totalChars = questions.reduce(
+    (sum, question) => sum + (question.passageBody?.length ?? 0) + question.prompt.length + question.options.join(" ").length,
+    0
+  );
+  return totalChars <= 18_000;
+}
+
+function safeReviewedChoiceAnswer(answer: string, options: string[]) {
+  const trimmed = answer.trim();
+  const letter = trimmed.match(/^([A-D])(?:[\.)]|$)/i)?.[1]?.toUpperCase();
+  if (letter && letter.charCodeAt(0) - 65 < options.length) return letter;
+  const optionIndex = options.findIndex((option) => option.trim().toLocaleLowerCase() === trimmed.toLocaleLowerCase());
+  return optionIndex >= 0 ? String.fromCharCode(65 + optionIndex) : "";
+}
+
+function safeImportError(error: unknown) {
+  if (!(error instanceof Error)) return String(error);
+  return { name: error.name, message: error.message, stack: error.stack?.split("\n").slice(0, 6).join("\n") };
+}
+
+function importErrorMessage(error: unknown, locale: string) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("IMPORT_UNSUPPORTED_FILE")) return locale === "en" ? "Unsupported file type." : "Định dạng file chưa được hỗ trợ.";
+  if (message.includes("IMPORT_EMPTY")) return locale === "en" ? "No recognizable questions were found in this file." : "Không tìm thấy câu hỏi có cấu trúc hợp lệ trong file.";
+  if (/mammoth|zip|docx/i.test(message)) return locale === "en" ? "The Word file could not be read. Try saving it again as .docx." : "Không đọc được file Word. Hãy lưu lại file dưới dạng .docx rồi thử lại.";
+  return locale === "en" ? "The import could not be completed. Check the file and try again." : "Không thể import đề. Hãy kiểm tra file và thử lại.";
 }
 
 function normalizeImportRow(row: Record<string, unknown>): ImportedQuestion | null {

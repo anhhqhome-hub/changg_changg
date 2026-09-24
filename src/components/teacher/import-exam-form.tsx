@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Bot, CheckCircle2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = [".docx", ".xlsx", ".xls", ".csv"];
 
+type ImportExamActionState = { error?: string };
+
 type ImportExamFormProps = {
   locale: string;
-  action: (formData: FormData) => void | Promise<void>;
+  action: (state: ImportExamActionState, formData: FormData) => ImportExamActionState | Promise<ImportExamActionState>;
   text: {
     name: string;
     titlePlaceholder: string;
@@ -27,6 +29,7 @@ type ImportExamFormProps = {
 };
 
 export function ImportExamForm({ locale, action, text }: ImportExamFormProps) {
+  const [state, formAction] = useActionState<ImportExamActionState, FormData>(action, {});
   const [fileMessage, setFileMessage] = useState("");
   const [fileName, setFileName] = useState("");
 
@@ -56,7 +59,7 @@ export function ImportExamForm({ locale, action, text }: ImportExamFormProps) {
 
   return (
     <form
-      action={action}
+      action={formAction}
       className="grid gap-4"
       onSubmit={(event) => {
         const file = event.currentTarget.elements.namedItem("file");
@@ -99,6 +102,11 @@ export function ImportExamForm({ locale, action, text }: ImportExamFormProps) {
           </span>
         </span>
       </label>
+      {state.error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700" role="alert">
+          {state.error}
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <SubmitButton label={text.submit} pendingLabel={text.submitting} />
       </div>

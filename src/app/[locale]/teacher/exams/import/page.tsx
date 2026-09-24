@@ -29,7 +29,7 @@ export default async function ImportExamPage({ params }: { params: Promise<{ loc
         excel: "Excel / CSV",
         excelHint: "One question per row",
         word: "Word",
-        wordHint: "Separate questions with Q: or ---",
+        wordHint: "Supports Q:/--- and Quizzi Word format with underlined correct answers",
         draftNote: "Your exam is created as a draft. You can edit questions, answers and points in the builder.",
         steps: ["Upload file", "Check questions", "Review draft"]
       }
@@ -54,7 +54,7 @@ export default async function ImportExamPage({ params }: { params: Promise<{ loc
         excel: "Excel / CSV",
         excelHint: "Mỗi dòng là một câu hỏi",
         word: "Word",
-        wordHint: "Tách câu bằng Q: hoặc ---",
+        wordHint: "Hỗ trợ Q:/--- và Word Quizzi; đáp án gạch chân được nhận tự động",
         draftNote: "Đề sẽ được tạo ở trạng thái bản nháp. Bạn có thể sửa câu hỏi, đáp án và điểm trong trình soạn đề.",
         steps: ["Chọn file", "Kiểm tra câu hỏi", "Rà soát bản nháp"]
       };
