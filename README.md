@@ -101,18 +101,25 @@ Excel export contains `Tong hop`, `Kiem tra`, and `Luyen tap` sheets.
 - `pnpm db:seed` – recreate demo data
 - `pnpm db:studio` – inspect data
 
-## Vercel demo database
+## Vercel database
 
-For a zero-config demo, when Vercel receives a `file:` database URL the app restores the bundled SQLite template to `/tmp/changg-changg/dev.db`. This is suitable only for demos because `/tmp` is ephemeral and not shared between function instances.
+When Vercel receives a `file:` database URL the app can still restore the bundled SQLite template to `/tmp/changg-changg/dev.db` so the UI/demo can open. That database is **ephemeral and not shared across Function instances**. V8 therefore blocks exam import while the deployment is in this mode, because a newly created exam could disappear on the redirect to the builder.
 
-For persistent production data, configure a shared libSQL/Turso database:
+For CRUD/import workflows on Vercel, configure a shared libSQL/Turso database. Either use the generic variables:
 
 ```env
 DATABASE_URL="libsql://..."
 DATABASE_AUTH_TOKEN="..."
 ```
 
-The Prisma schema remains SQLite-compatible, so no application-code rewrite is required.
+or the Turso aliases (these take precedence):
+
+```env
+TURSO_DATABASE_URL="libsql://..."
+TURSO_AUTH_TOKEN="..."
+```
+
+The simplest migration for this project is to import `prisma/dev.db` into Turso, then point Vercel at the resulting URL/token. The Prisma schema remains SQLite-compatible, so no application-code rewrite is required.
 
 Diagnostic endpoint:
 

@@ -34,8 +34,13 @@ const configuredUploadDir = process.env.UPLOAD_DIR?.trim();
 const shouldUseVercelUploadDir =
   isVercel && (!configuredUploadDir || configuredUploadDir === "./storage/uploads" || configuredUploadDir === "storage/uploads");
 
+const remoteDatabaseUrl = process.env.TURSO_DATABASE_URL?.trim();
+const remoteDatabaseToken = process.env.TURSO_AUTH_TOKEN?.trim();
+
 export const env = {
   ...parsed,
+  DATABASE_URL: remoteDatabaseUrl || parsed.DATABASE_URL,
+  DATABASE_AUTH_TOKEN: remoteDatabaseToken || parsed.DATABASE_AUTH_TOKEN,
   BETTER_AUTH_URL: shouldUseVercelAuthUrl ? vercelBaseUrl() ?? parsed.BETTER_AUTH_URL : parsed.BETTER_AUTH_URL,
   UPLOAD_DIR: shouldUseVercelUploadDir ? "/tmp/changg-changg/uploads" : parsed.UPLOAD_DIR
 };

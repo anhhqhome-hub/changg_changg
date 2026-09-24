@@ -3,10 +3,22 @@ import { ArrowLeft, Check, FileSpreadsheet, FileText, ShieldCheck } from "lucide
 import { importExamFromFileAction } from "@/actions/teacher-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImportExamForm } from "@/components/teacher/import-exam-form";
+import { env } from "@/lib/env";
+import { databaseWriteReadiness } from "@/lib/runtime-database";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export default async function ImportExamPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const isEn = locale === "en";
+  const databaseStatus = databaseWriteReadiness(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
+  const blockedReason = databaseStatus.productionWriteReady
+    ? undefined
+    : isEn
+      ? "This Vercel deployment is using temporary SQLite storage. Configure a persistent libSQL/Turso database before importing exams, otherwise the new exam can disappear after redirecting to the builder."
+      : "Bản Vercel này đang dùng SQLite tạm trong /tmp. Hãy cấu hình database persistent libSQL/Turso trước khi import; nếu không, đề vừa tạo có thể biến mất ngay sau khi chuyển sang trang soạn đề.";
   const text = isEn
     ? {
         eyebrow: "Fast exam creation",
@@ -84,7 +96,7 @@ export default async function ImportExamPage({ params }: { params: Promise<{ loc
             <CardTitle className="text-lg">{text.upload}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ImportExamForm action={importExamFromFileAction} locale={locale} text={text} />
+            <ImportExamForm action={importExamFromFileAction} locale={locale} text={text} blockedReason={blockedReason} />
           </CardContent>
         </Card>
 

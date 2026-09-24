@@ -48,3 +48,20 @@ export function resolveDatabaseConnection(configuredUrl: string, authToken?: str
     mode: isRemoteLibsql ? "remote-libsql" : isFileDatabase ? "local-file" : "other"
   };
 }
+
+
+export function isPersistentDatabaseConnection(connection: ResolvedDatabaseConnection) {
+  // Local file SQLite is durable for a normal local/VPS process, but Vercel's
+  // /tmp fallback is intentionally marked ephemeral and must never be used for
+  // workflows that expect data to survive a redirect or a later function call.
+  return !connection.ephemeral;
+}
+
+export function databaseWriteReadiness(configuredUrl: string, authToken?: string) {
+  const connection = resolveDatabaseConnection(configuredUrl, authToken);
+  return {
+    ...connection,
+    persistent: isPersistentDatabaseConnection(connection),
+    productionWriteReady: !(process.env.VERCEL === "1" && connection.ephemeral)
+  };
+}

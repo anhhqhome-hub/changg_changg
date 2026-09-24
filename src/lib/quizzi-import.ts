@@ -20,8 +20,7 @@ const breakMarker = /\s*\[<br>\]\s*/i;
 const groupTag = /\[<\/?g>\]/gi;
 const numberedQuestion = /^\s*\(\[?<([0-9]+)>\]?\)([\s\S]*)$/i;
 const namedQuestion = /^\s*Question\s+([0-9]+)[\.:]\s*([\s\S]*)$/i;
-// Option labels must start at a whitespace boundary. This avoids treating the C. in "D.C." as an answer option.
-const optionMarker = /(^|\s)([A-D])\s*[\.)]\s+/g;
+type OptionMarker = { label: "A" | "B" | "C" | "D"; start: number; contentStart: number };
 const correctMarker = "[[QUIZZI_CORRECT]]";
 
 export function parseQuizziWordText(text: string): QuizziParsedQuestion[] {
@@ -124,16 +123,16 @@ function stripQuestionMarker(text: string) {
 
 function parseQuestionBlock(block: string[], number: string, hasPassage: boolean) {
   const text = stripQuestionMarker(block.join("\n"));
-  const matches = [...text.matchAll(optionMarker)];
+  const matches = findOrderedOptionMarkers(text);
   const options: string[] = [];
 
   let prompt = text;
   if (matches.length > 0) {
-    prompt = text.slice(0, matches[0].index).trim();
+    prompt = text.slice(0, matches[0].start).trim();
     for (const [index, match] of matches.entries()) {
-      const optionStart = (match.index ?? 0) + match[0].length;
+      const optionStart = match.contentStart;
       const next = matches[index + 1];
-      const optionEnd = next ? (next.index ?? text.length) : text.length;
+      const optionEnd = next ? next.start : text.length;
       options.push(text.slice(optionStart, optionEnd));
     }
   }
@@ -152,6 +151,40 @@ function parseQuestionBlock(block: string[], number: string, hasPassage: boolean
   if (!prompt && cleanedOptions.length === 0) return null;
 
   return { prompt, options: cleanedOptions, answer };
+}
+
+
+function findOrderedOptionMarkers(text: string): OptionMarker[] {
+  // Word often stores tabs and option labels in separate runs. Some converters
+  // preserve those tabs, while others collapse the runs into `answerB. next`.
+  // Instead of requiring whitespace before every label, find an ordered A→B→C→D
+  // sequence. Requiring the sequence avoids false positives such as the `C.` in
+  // `Washington D.C.`.
+  const candidates: OptionMarker[] = [];
+  const pattern = /([A-D])\s*[\.)]\s*/g;
+  for (const match of text.matchAll(pattern)) {
+    const label = match[1] as OptionMarker["label"];
+    const start = match.index ?? 0;
+    candidates.push({ label, start, contentStart: start + match[0].length });
+  }
+
+  let best: OptionMarker[] = [];
+  for (let startIndex = 0; startIndex < candidates.length; startIndex += 1) {
+    if (candidates[startIndex].label !== "A") continue;
+    const sequence = [candidates[startIndex]];
+    let expectedCode = "B".charCodeAt(0);
+    for (let index = startIndex + 1; index < candidates.length && expectedCode <= "D".charCodeAt(0); index += 1) {
+      const expected = String.fromCharCode(expectedCode);
+      if (candidates[index].label === expected) {
+        sequence.push(candidates[index]);
+        expectedCode += 1;
+      }
+    }
+    if (sequence.length > best.length) best = sequence;
+    if (best.length === 4) break;
+  }
+
+  return best.length >= 2 ? best : [];
 }
 
 export function cleanQuizziMarkup(value: string) {

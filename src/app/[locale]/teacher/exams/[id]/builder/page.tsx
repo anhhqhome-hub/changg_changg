@@ -8,28 +8,52 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AssignExamModal } from "@/components/teacher/assign-exam-modal";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
+import { env } from "@/lib/env";
+import { databaseWriteReadiness } from "@/lib/runtime-database";
 import type { Skill } from "@/generated/prisma/enums";
 
 export default async function ExamBuilderPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   const teacher = await requireRole("TEACHER", locale);
   const isEn = locale === "en";
-  const [exam, bank, classes, students] = await Promise.all([
-    prisma.exam.findFirstOrThrow({
-      where: { id, createdById: teacher.id },
-      include: {
-        versions: {
-          orderBy: { versionNumber: "desc" },
-          take: 1,
-          include: {
-            sections: {
-              include: { groups: { include: { questions: { include: { options: true } } } } },
-              orderBy: { sortOrder: "asc" }
-            }
+  const exam = await prisma.exam.findFirst({
+    where: { id, createdById: teacher.id },
+    include: {
+      versions: {
+        orderBy: { versionNumber: "desc" },
+        take: 1,
+        include: {
+          sections: {
+            include: { groups: { include: { questions: { include: { options: true } } } } },
+            orderBy: { sortOrder: "asc" }
           }
         }
       }
-    }),
+    }
+  });
+
+  if (!exam) {
+    const databaseStatus = databaseWriteReadiness(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
+    return (
+      <div className="mx-auto max-w-2xl rounded-2xl border border-amber-300 bg-amber-50 p-6 text-amber-950">
+        <h1 className="text-xl font-black">{isEn ? "Exam not found in the current database" : "Không tìm thấy đề trong database hiện tại"}</h1>
+        <p className="mt-2 text-sm font-semibold leading-6">
+          {databaseStatus.ephemeral
+            ? isEn
+              ? "This deployment is using Vercel temporary SQLite storage. A previous request may have created the exam in another function instance. Configure a persistent libSQL/Turso database and import again."
+              : "Deployment đang dùng SQLite tạm của Vercel. Request trước có thể đã tạo đề ở một function instance khác. Hãy cấu hình database persistent libSQL/Turso rồi import lại."
+            : isEn
+              ? "The exam may have been deleted or you do not have access to it."
+              : "Đề có thể đã bị xóa hoặc tài khoản hiện tại không có quyền truy cập."}
+        </p>
+        <Button asChild className="mt-4">
+          <Link href={`/${locale}/teacher/exams/import`}>{isEn ? "Back to import" : "Quay lại import"}</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const [bank, classes, students] = await Promise.all([
     prisma.questionBankItem.findMany({ where: { createdById: teacher.id }, orderBy: { createdAt: "desc" }, include: { _count: { select: { examQuestions: true } } } }),
     prisma.class.findMany({
       where: { teacherId: teacher.id, archivedAt: null },
@@ -43,6 +67,14 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
     })
   ]);
   const version = exam.versions[0];
+  if (!version) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">
+        <h1 className="text-xl font-black">{isEn ? "Exam version is missing" : "Đề chưa có phiên bản"}</h1>
+        <p className="mt-2 text-sm font-semibold">{isEn ? "Delete this incomplete draft and import the source file again." : "Hãy xóa bản nháp chưa hoàn chỉnh này và import lại file nguồn."}</p>
+      </div>
+    );
+  }
   const questions = version.sections.flatMap((section) => section.groups.flatMap((group) => group.questions));
   const totalPoints = questions.reduce((sum, question) => sum + question.points, 0);
   const bankBySkill = bank.reduce<Record<Skill, typeof bank>>(

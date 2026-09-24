@@ -10,6 +10,8 @@ import { gradeObjectiveAnswer, isManualQuestion } from "@/domain/grading";
 import { calculateFinalScore, calculateTotalPoints } from "@/domain/scoring";
 import { askTeacherAgent, generateQuestionsWithGroq, reviewImportedQuestionsWithGroq, type AiQuestion } from "@/lib/ai";
 import { prisma } from "@/lib/db";
+import { env } from "@/lib/env";
+import { databaseWriteReadiness } from "@/lib/runtime-database";
 import { getOrCreateCurrentAcademicYear } from "@/lib/academic-year";
 import { requireRole } from "@/lib/permissions";
 import { parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
@@ -210,10 +212,27 @@ export async function importExamFromFileAction(
     return { error: locale === "en" ? "The file must be 5MB or smaller." : "File phải có dung lượng tối đa 5MB." };
   }
 
+  const databaseStatus = databaseWriteReadiness(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
+  if (!databaseStatus.productionWriteReady) {
+    return {
+      error:
+        locale === "en"
+          ? "Exam import is disabled because this Vercel deployment is using temporary SQLite storage. Configure a persistent libSQL/Turso database first (DATABASE_URL or TURSO_DATABASE_URL + token), then redeploy."
+          : "Chưa thể import đề vì bản Vercel này đang dùng SQLite tạm trong /tmp. Hãy cấu hình database persistent libSQL/Turso (DATABASE_URL hoặc TURSO_DATABASE_URL + token), rồi redeploy. Nếu tiếp tục dùng /tmp, đề có thể mất ngay sau khi chuyển trang."
+    };
+  }
+
   let examId: string | null = null;
   try {
     let importedQuestions = await parseExamImportFile(file);
     if (importedQuestions.length === 0) throw new Error("IMPORT_EMPTY");
+    validateImportedQuestions(importedQuestions);
+    console.info("[exam-import] Parsed source file", {
+      fileName: file.name,
+      questionCount: importedQuestions.length,
+      groupCount: new Set(importedQuestions.map((question) => question.groupKey).filter(Boolean)).size,
+      answeredCount: importedQuestions.filter((question) => question.answer.trim()).length
+    });
 
     const checks = [
       `Parsed ${importedQuestions.length} questions from ${file.name}`,
@@ -902,90 +921,145 @@ async function createExamFromImportedQuestions({
   sourceLabel: string;
   questions: ImportedQuestion[];
 }) {
-  const exam = await prisma.exam.create({
-    data: {
-      title,
-      description,
-      createdById: teacherId,
-      versions: {
-        create: {
-          versionNumber: 1,
-          title,
-          description,
-          instructions: "Đề được tạo tự động. Giáo viên nên kiểm tra lại nội dung, đáp án và điểm trước khi xuất bản.",
-          sections: {
-            create: supportedSkills
-              .filter((skill) => questions.some((question) => question.skill === skill))
-              .map((skill, index) => ({
-                skill,
-                title: skillTitle(skill),
-                sortOrder: index + 1
-              }))
-          }
-        }
-      }
-    },
-    include: { versions: { include: { sections: true } } }
-  });
+  validateImportedQuestions(questions);
+  let createdExamId: string | null = null;
 
-  const version = exam.versions[0];
-  const sectionBySkill = new Map(version.sections.map((section) => [section.skill, section.id]));
-  const groups = new Map<string, { firstIndex: number; questions: ImportedQuestion[] }>();
-
-  questions.forEach((question, index) => {
-    const key = question.groupKey ? `${question.skill}:${question.groupKey}` : `${question.skill}:question-${index + 1}`;
-    const group = groups.get(key);
-    if (group) group.questions.push(question);
-    else groups.set(key, { firstIndex: index, questions: [question] });
-  });
-
-  for (const group of [...groups.values()].sort((a, b) => a.firstIndex - b.firstIndex)) {
-    const first = group.questions[0];
-    const sectionId = sectionBySkill.get(first.skill);
-    if (!sectionId) continue;
-
-    const passage = first.passageBody
-      ? await prisma.readingPassage.create({
-          data: {
-            title: first.passageTitle || first.groupTitle || `Passage ${group.firstIndex + 1}`,
-            body: first.passageBody,
-            instructions: first.groupInstructions || null
-          }
-        })
-      : null;
-
-    await prisma.questionGroup.create({
+  try {
+    const exam = await prisma.exam.create({
       data: {
-        sectionId,
-        title: first.groupTitle || `${sourceLabel} ${group.firstIndex + 1}`,
-        instructions: first.groupInstructions || null,
-        readingPassageId: passage?.id,
-        sortOrder: group.firstIndex + 1,
-        questions: {
-          create: group.questions.map((question, questionIndex) => ({
-            title: question.title,
-            prompt: question.prompt,
-            skill: question.skill,
-            questionType: question.questionType,
-            points: question.points,
-            sortOrder: questionIndex + 1,
-            tagsJson: JSON.stringify([sourceLabel.toLocaleLowerCase().includes("ai") ? "ai" : "import"]),
-            correctAnswersJson: correctAnswerJson(question),
-            settingsJson: JSON.stringify({ caseSensitive: false, trimWhitespace: true, sourceNumber: question.sourceNumber ?? null }),
-            options: {
-              create: question.options.map((option, optionIndex) => ({
-                label: option,
-                value: option,
-                sortOrder: optionIndex + 1,
-                isCorrect: isCorrectOption(question.answer, option, optionIndex)
-              }))
+        title,
+        description,
+        createdById: teacherId,
+        versions: {
+          create: {
+            versionNumber: 1,
+            title,
+            description,
+            instructions: "Đề được tạo tự động. Giáo viên nên kiểm tra lại nội dung, đáp án và điểm trước khi xuất bản.",
+            sections: {
+              create: supportedSkills
+                .filter((skill) => questions.some((question) => question.skill === skill))
+                .map((skill, index) => ({
+                  skill,
+                  title: skillTitle(skill),
+                  sortOrder: index + 1
+                }))
             }
-          }))
+          }
         }
-      }
+      },
+      include: { versions: { include: { sections: true } } }
     });
+    createdExamId = exam.id;
+
+    const version = exam.versions[0];
+    if (!version) throw new Error("IMPORT_VERSION_CREATE_FAILED");
+    const sectionBySkill = new Map(version.sections.map((section) => [section.skill, section.id]));
+    const groups = new Map<string, { firstIndex: number; questions: ImportedQuestion[] }>();
+
+    questions.forEach((question, index) => {
+      const key = question.groupKey ? `${question.skill}:${question.groupKey}` : `${question.skill}:question-${index + 1}`;
+      const group = groups.get(key);
+      if (group) group.questions.push(question);
+      else groups.set(key, { firstIndex: index, questions: [question] });
+    });
+
+    const orderedGroups = [...groups.values()].sort((a, b) => a.firstIndex - b.firstIndex);
+    // A small amount of concurrency materially reduces remote libSQL round-trips
+    // without flooding the database with all groups at once.
+    const IMPORT_GROUP_CONCURRENCY = 4;
+    for (let offset = 0; offset < orderedGroups.length; offset += IMPORT_GROUP_CONCURRENCY) {
+      const batch = orderedGroups.slice(offset, offset + IMPORT_GROUP_CONCURRENCY);
+      await Promise.all(
+        batch.map(async (group) => {
+          const first = group.questions[0];
+          const sectionId = sectionBySkill.get(first.skill);
+          if (!sectionId) throw new Error(`IMPORT_SECTION_MISSING:${first.skill}`);
+
+          const passage = first.passageBody
+            ? await prisma.readingPassage.create({
+                data: {
+                  title: first.passageTitle || first.groupTitle || `Passage ${group.firstIndex + 1}`,
+                  body: first.passageBody,
+                  instructions: first.groupInstructions || null
+                }
+              })
+            : null;
+
+          await prisma.questionGroup.create({
+            data: {
+              sectionId,
+              title: first.groupTitle || `${sourceLabel} ${group.firstIndex + 1}`,
+              instructions: first.groupInstructions || null,
+              readingPassageId: passage?.id,
+              sortOrder: group.firstIndex + 1,
+              questions: {
+                create: group.questions.map((question, questionIndex) => ({
+                  title: question.title,
+                  prompt: question.prompt,
+                  skill: question.skill,
+                  questionType: question.questionType,
+                  points: question.points,
+                  sortOrder: questionIndex + 1,
+                  tagsJson: JSON.stringify([sourceLabel.toLocaleLowerCase().includes("ai") ? "ai" : "import"]),
+                  correctAnswersJson: correctAnswerJson(question),
+                  settingsJson: JSON.stringify({ caseSensitive: false, trimWhitespace: true, sourceNumber: question.sourceNumber ?? null }),
+                  options: {
+                    create: question.options.map((option, optionIndex) => ({
+                      label: option,
+                      value: option,
+                      sortOrder: optionIndex + 1,
+                      isCorrect: isCorrectOption(question.answer, option, optionIndex)
+                    }))
+                  }
+                }))
+              }
+            }
+          });
+        })
+      );
+    }
+
+    const savedQuestionCount = await prisma.examQuestion.count({
+      where: { group: { section: { version: { examId: exam.id } } } }
+    });
+    const savedOptionCount = await prisma.examQuestionOption.count({
+      where: { question: { group: { section: { version: { examId: exam.id } } } } }
+    });
+    const expectedOptionCount = questions.reduce((sum, question) => sum + question.options.length, 0);
+
+    if (savedQuestionCount !== questions.length || savedOptionCount !== expectedOptionCount) {
+      throw new Error(`IMPORT_SAVE_VERIFY_FAILED:questions=${savedQuestionCount}/${questions.length};options=${savedOptionCount}/${expectedOptionCount}`);
+    }
+
+    console.info("[exam-import] Persistence verified", {
+      examId: exam.id,
+      questions: savedQuestionCount,
+      options: savedOptionCount,
+      groups: orderedGroups.length
+    });
+    return exam;
+  } catch (error) {
+    if (createdExamId) {
+      try {
+        await prisma.exam.delete({ where: { id: createdExamId } });
+      } catch (cleanupError) {
+        console.error("[exam-import] Failed to rollback partial exam", safeImportError(cleanupError));
+      }
+    }
+    throw error;
   }
-  return exam;
+}
+
+function validateImportedQuestions(questions: ImportedQuestion[]) {
+  if (questions.length > 500) throw new Error("IMPORT_TOO_MANY_QUESTIONS");
+  for (const [index, question] of questions.entries()) {
+    if (!question.prompt.trim()) throw new Error(`IMPORT_INVALID_QUESTION:${index + 1}:EMPTY_PROMPT`);
+    if (!Number.isFinite(question.points) || question.points <= 0) throw new Error(`IMPORT_INVALID_QUESTION:${index + 1}:POINTS`);
+    const isChoice = question.questionType.includes("CHOICE") || question.questionType === "TRUE_FALSE";
+    if (isChoice && question.options.length < 2) throw new Error(`IMPORT_INVALID_QUESTION:${index + 1}:OPTIONS`);
+    if (question.options.length > 20) throw new Error(`IMPORT_INVALID_QUESTION:${index + 1}:TOO_MANY_OPTIONS`);
+  }
 }
 
 function aiToImportedQuestion(question: AiQuestion): ImportedQuestion {
@@ -1059,6 +1133,9 @@ function importErrorMessage(error: unknown, locale: string) {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("IMPORT_UNSUPPORTED_FILE")) return locale === "en" ? "Unsupported file type." : "Định dạng file chưa được hỗ trợ.";
   if (message.includes("IMPORT_EMPTY")) return locale === "en" ? "No recognizable questions were found in this file." : "Không tìm thấy câu hỏi có cấu trúc hợp lệ trong file.";
+  if (message.includes("IMPORT_TOO_MANY_QUESTIONS")) return locale === "en" ? "This file contains more than 500 questions. Split it into smaller files." : "File có hơn 500 câu hỏi. Hãy chia thành nhiều file nhỏ hơn.";
+  if (message.includes("IMPORT_INVALID_QUESTION")) return locale === "en" ? "Some imported questions are incomplete or malformed. Review the Word formatting and try again." : "Một số câu hỏi import chưa đủ dữ liệu hoặc sai cấu trúc. Hãy kiểm tra định dạng Word rồi thử lại.";
+  if (message.includes("IMPORT_SAVE_VERIFY_FAILED")) return locale === "en" ? "The draft was not saved completely, so the partial import was rolled back. Please try again." : "Đề chưa được lưu đầy đủ nên hệ thống đã rollback bản import dở. Hãy thử lại.";
   if (/mammoth|zip|docx/i.test(message)) return locale === "en" ? "The Word file could not be read. Try saving it again as .docx." : "Không đọc được file Word. Hãy lưu lại file dưới dạng .docx rồi thử lại.";
   return locale === "en" ? "The import could not be completed. Check the file and try again." : "Không thể import đề. Hãy kiểm tra file và thử lại.";
 }

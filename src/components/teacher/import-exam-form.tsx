@@ -14,6 +14,7 @@ type ImportExamActionState = { error?: string };
 type ImportExamFormProps = {
   locale: string;
   action: (state: ImportExamActionState, formData: FormData) => ImportExamActionState | Promise<ImportExamActionState>;
+  blockedReason?: string;
   text: {
     name: string;
     titlePlaceholder: string;
@@ -28,7 +29,7 @@ type ImportExamFormProps = {
   };
 };
 
-export function ImportExamForm({ locale, action, text }: ImportExamFormProps) {
+export function ImportExamForm({ locale, action, text, blockedReason }: ImportExamFormProps) {
   const [state, formAction] = useActionState<ImportExamActionState, FormData>(action, {});
   const [fileMessage, setFileMessage] = useState("");
   const [fileName, setFileName] = useState("");
@@ -102,22 +103,27 @@ export function ImportExamForm({ locale, action, text }: ImportExamFormProps) {
           </span>
         </span>
       </label>
+      {blockedReason ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900" role="alert">
+          {blockedReason}
+        </div>
+      ) : null}
       {state.error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700" role="alert">
           {state.error}
         </div>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <SubmitButton label={text.submit} pendingLabel={text.submitting} />
+        <SubmitButton label={text.submit} pendingLabel={text.submitting} disabled={Boolean(blockedReason)} />
       </div>
     </form>
   );
 }
 
-function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
+function SubmitButton({ label, pendingLabel, disabled }: { label: string; pendingLabel: string; disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} aria-busy={pending}>
+    <Button type="submit" disabled={pending || disabled} aria-busy={pending}>
       <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> {pending ? pendingLabel : label}
     </Button>
   );
