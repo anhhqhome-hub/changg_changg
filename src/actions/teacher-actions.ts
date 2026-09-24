@@ -988,6 +988,18 @@ async function createExamFromImportedQuestions({
   return exam;
 }
 
+function aiToImportedQuestion(question: AiQuestion): ImportedQuestion {
+  return {
+    title: question.title,
+    prompt: question.prompt,
+    skill: question.skill,
+    questionType: question.questionType,
+    options: [...question.options],
+    answer: question.answer,
+    points: question.points
+  };
+}
+
 function importedToAiQuestion(question: ImportedQuestion): AiQuestion {
   const context = question.passageBody
     ? `CONTEXT:\n${question.passageBody}\n\nQUESTION:\n${question.prompt}`

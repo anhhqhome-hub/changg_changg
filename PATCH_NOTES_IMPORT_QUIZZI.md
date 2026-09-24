@@ -19,3 +19,9 @@
 - 160/160 questions have four options
 - 159 answers detected from Word underline formatting
 - 1 source question has no underlined choice and can use the optional AI missing-answer fallback
+
+## V7.1 TypeScript build fix
+
+- Restored the typed `aiToImportedQuestion(question: AiQuestion): ImportedQuestion` mapper.
+- Fixes `TS2552: Cannot find name 'aiToImportedQuestion'` in AI question-bank and AI exam generation flows.
+- Restores concrete `ImportedQuestion[]` inference, eliminating the downstream `question is unknown` and implicit `any` errors reported during `next build` type checking.
