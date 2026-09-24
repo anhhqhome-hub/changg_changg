@@ -8,8 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AssignExamModal } from "@/components/teacher/assign-exam-modal";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
-import { env } from "@/lib/env";
-import { databaseWriteReadiness } from "@/lib/runtime-database";
 import type { Skill } from "@/generated/prisma/enums";
 
 export default async function ExamBuilderPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
@@ -33,18 +31,11 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
   });
 
   if (!exam) {
-    const databaseStatus = databaseWriteReadiness(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
     return (
       <div className="mx-auto max-w-2xl rounded-2xl border border-amber-300 bg-amber-50 p-6 text-amber-950">
-        <h1 className="text-xl font-black">{isEn ? "Exam not found in the current database" : "Không tìm thấy đề trong database hiện tại"}</h1>
+        <h1 className="text-xl font-black">{isEn ? "Exam not found" : "Không tìm thấy đề"}</h1>
         <p className="mt-2 text-sm font-semibold leading-6">
-          {databaseStatus.ephemeral
-            ? isEn
-              ? "This deployment is using Vercel temporary SQLite storage. A previous request may have created the exam in another function instance. Configure a persistent libSQL/Turso database and import again."
-              : "Deployment đang dùng SQLite tạm của Vercel. Request trước có thể đã tạo đề ở một function instance khác. Hãy cấu hình database persistent libSQL/Turso rồi import lại."
-            : isEn
-              ? "The exam may have been deleted or you do not have access to it."
-              : "Đề có thể đã bị xóa hoặc tài khoản hiện tại không có quyền truy cập."}
+          {isEn ? "The exam may have been deleted or you do not have access to it." : "Đề có thể đã bị xóa hoặc tài khoản hiện tại không có quyền truy cập."}
         </p>
         <Button asChild className="mt-4">
           <Link href={`/${locale}/teacher/exams/import`}>{isEn ? "Back to import" : "Quay lại import"}</Link>

@@ -10,8 +10,6 @@ import { gradeObjectiveAnswer, isManualQuestion } from "@/domain/grading";
 import { calculateFinalScore, calculateTotalPoints } from "@/domain/scoring";
 import { askTeacherAgent, generateQuestionsWithGroq, reviewImportedQuestionsWithGroq, type AiQuestion } from "@/lib/ai";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
-import { databaseWriteReadiness } from "@/lib/runtime-database";
 import { getOrCreateCurrentAcademicYear } from "@/lib/academic-year";
 import { requireRole } from "@/lib/permissions";
 import { parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
@@ -210,16 +208,6 @@ export async function importExamFromFileAction(
   }
   if (file.size > 5 * 1024 * 1024) {
     return { error: locale === "en" ? "The file must be 5MB or smaller." : "File phải có dung lượng tối đa 5MB." };
-  }
-
-  const databaseStatus = databaseWriteReadiness(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN);
-  if (!databaseStatus.productionWriteReady) {
-    return {
-      error:
-        locale === "en"
-          ? "Exam import is disabled because this Vercel deployment is using temporary SQLite storage. Configure a persistent libSQL/Turso database first (DATABASE_URL or TURSO_DATABASE_URL + token), then redeploy."
-          : "Chưa thể import đề vì bản Vercel này đang dùng SQLite tạm trong /tmp. Hãy cấu hình database persistent libSQL/Turso (DATABASE_URL hoặc TURSO_DATABASE_URL + token), rồi redeploy. Nếu tiếp tục dùng /tmp, đề có thể mất ngay sau khi chuyển trang."
-    };
   }
 
   let examId: string | null = null;
@@ -965,59 +953,53 @@ async function createExamFromImportedQuestions({
     });
 
     const orderedGroups = [...groups.values()].sort((a, b) => a.firstIndex - b.firstIndex);
-    // A small amount of concurrency materially reduces remote libSQL round-trips
-    // without flooding the database with all groups at once.
-    const IMPORT_GROUP_CONCURRENCY = 4;
-    for (let offset = 0; offset < orderedGroups.length; offset += IMPORT_GROUP_CONCURRENCY) {
-      const batch = orderedGroups.slice(offset, offset + IMPORT_GROUP_CONCURRENCY);
-      await Promise.all(
-        batch.map(async (group) => {
-          const first = group.questions[0];
-          const sectionId = sectionBySkill.get(first.skill);
-          if (!sectionId) throw new Error(`IMPORT_SECTION_MISSING:${first.skill}`);
+    // SQLite serializes writes. Import groups sequentially to avoid SQLITE_BUSY /
+    // lock contention when a large Word file creates many nested records.
+    for (const group of orderedGroups) {
+      const first = group.questions[0];
+      const sectionId = sectionBySkill.get(first.skill);
+      if (!sectionId) throw new Error(`IMPORT_SECTION_MISSING:${first.skill}`);
 
-          const passage = first.passageBody
-            ? await prisma.readingPassage.create({
-                data: {
-                  title: first.passageTitle || first.groupTitle || `Passage ${group.firstIndex + 1}`,
-                  body: first.passageBody,
-                  instructions: first.groupInstructions || null
-                }
-              })
-            : null;
-
-          await prisma.questionGroup.create({
+      const passage = first.passageBody
+        ? await prisma.readingPassage.create({
             data: {
-              sectionId,
-              title: first.groupTitle || `${sourceLabel} ${group.firstIndex + 1}`,
-              instructions: first.groupInstructions || null,
-              readingPassageId: passage?.id,
-              sortOrder: group.firstIndex + 1,
-              questions: {
-                create: group.questions.map((question, questionIndex) => ({
-                  title: question.title,
-                  prompt: question.prompt,
-                  skill: question.skill,
-                  questionType: question.questionType,
-                  points: question.points,
-                  sortOrder: questionIndex + 1,
-                  tagsJson: JSON.stringify([sourceLabel.toLocaleLowerCase().includes("ai") ? "ai" : "import"]),
-                  correctAnswersJson: correctAnswerJson(question),
-                  settingsJson: JSON.stringify({ caseSensitive: false, trimWhitespace: true, sourceNumber: question.sourceNumber ?? null }),
-                  options: {
-                    create: question.options.map((option, optionIndex) => ({
-                      label: option,
-                      value: option,
-                      sortOrder: optionIndex + 1,
-                      isCorrect: isCorrectOption(question.answer, option, optionIndex)
-                    }))
-                  }
+              title: first.passageTitle || first.groupTitle || `Passage ${group.firstIndex + 1}`,
+              body: first.passageBody,
+              instructions: first.groupInstructions || null
+            }
+          })
+        : null;
+
+      await prisma.questionGroup.create({
+        data: {
+          sectionId,
+          title: first.groupTitle || `${sourceLabel} ${group.firstIndex + 1}`,
+          instructions: first.groupInstructions || null,
+          readingPassageId: passage?.id,
+          sortOrder: group.firstIndex + 1,
+          questions: {
+            create: group.questions.map((question, questionIndex) => ({
+              title: question.title,
+              prompt: question.prompt,
+              skill: question.skill,
+              questionType: question.questionType,
+              points: question.points,
+              sortOrder: questionIndex + 1,
+              tagsJson: JSON.stringify([sourceLabel.toLocaleLowerCase().includes("ai") ? "ai" : "import"]),
+              correctAnswersJson: correctAnswerJson(question),
+              settingsJson: JSON.stringify({ caseSensitive: false, trimWhitespace: true, sourceNumber: question.sourceNumber ?? null }),
+              options: {
+                create: question.options.map((option, optionIndex) => ({
+                  label: option,
+                  value: option,
+                  sortOrder: optionIndex + 1,
+                  isCorrect: isCorrectOption(question.answer, option, optionIndex)
                 }))
               }
-            }
-          });
-        })
-      );
+            }))
+          }
+        }
+      });
     }
 
     const savedQuestionCount = await prisma.examQuestion.count({
