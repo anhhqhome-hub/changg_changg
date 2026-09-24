@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BookOpen, FileUp, Library } from "lucide-react";
 import { StatusBadge } from "@/components/app/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateExamModal } from "@/components/teacher/create-exam-modal";
@@ -106,7 +107,10 @@ export default async function TeacherExamsPage({ params }: { params: Promise<{ l
                       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
                         <BookOpen className="h-5 w-5" />
                       </div>
-                      {version ? <StatusBadge status={version.status} /> : null}
+                      <div className="flex flex-col items-end gap-1">
+                        {version ? <StatusBadge status={version.status} /> : null}
+                        {version ? <Badge tone={version.mode === "PRACTICE" ? "indigo" : "slate"}>{version.mode === "PRACTICE" ? (isEn ? "Practice" : "Luyện tập") : (isEn ? "Test" : "Kiểm tra")}</Badge> : null}
+                      </div>
                     </div>
                     <h2 className="font-black text-slate-950">{exam.title}</h2>
                     <p className="mt-1 line-clamp-2 text-sm text-slate-600">{exam.description}</p>

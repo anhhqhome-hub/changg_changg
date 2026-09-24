@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CreateClassModal } from "@/components/teacher/create-class-modal";
 import { prisma } from "@/lib/db";
+import { getOrCreateCurrentAcademicYear } from "@/lib/academic-year";
 import { requireRole } from "@/lib/permissions";
 
 export default async function TeacherClassesPage({
@@ -20,13 +21,15 @@ export default async function TeacherClassesPage({
   const teacher = await requireRole("TEACHER", locale);
   const isEn = locale === "en";
   const showArchived = archived === "1";
-  const [classes, archivedCount] = await Promise.all([
+  const currentAcademicYear = await getOrCreateCurrentAcademicYear();
+  const [classes, archivedCount, teacherProfile] = await Promise.all([
     prisma.class.findMany({
       where: { teacherId: teacher.id, archivedAt: showArchived ? { not: null } : null },
-      include: { _count: { select: { memberships: true, assignments: true } } },
+      include: { school: true, academicYear: true, _count: { select: { memberships: true, assignments: true } } },
       orderBy: { createdAt: "desc" }
     }),
-    prisma.class.count({ where: { teacherId: teacher.id, archivedAt: { not: null } } })
+    prisma.class.count({ where: { teacherId: teacher.id, archivedAt: { not: null } } }),
+    prisma.teacherProfile.findUnique({ where: { userId: teacher.id }, include: { school: true } })
   ]);
   const totalStudents = classes.reduce((sum, item) => sum + item._count.memberships, 0);
 
@@ -74,7 +77,7 @@ export default async function TeacherClassesPage({
             <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">{text.subtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <CreateClassModal locale={locale} />
+            <CreateClassModal locale={locale} schoolName={teacherProfile?.school?.name} currentAcademicYearName={currentAcademicYear.name} />
             <Button asChild variant="outline">
               <Link href={`/${locale}/teacher/classes${showArchived ? "" : "?archived=1"}`}>
                 {showArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
@@ -105,6 +108,7 @@ export default async function TeacherClassesPage({
                 </div>
                 <h2 className="font-black text-slate-950">{item.name}</h2>
                 <p className="mt-1 line-clamp-2 text-sm text-slate-600">{item.description || (isEn ? "No description" : "Chưa có mô tả")}</p>
+                <p className="mt-2 text-xs font-bold text-indigo-700">{item.school?.name ?? "—"} · {item.academicYear?.name ?? (isEn ? "No academic year" : "Chưa có năm học")}</p>
                 <div className="mt-4 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
                   <span>{item._count.memberships} {text.studentsSuffix}</span>
                   <span>{item._count.assignments} {text.assignments}</span>

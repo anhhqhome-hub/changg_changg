@@ -1,1 +1,6 @@
-export { default } from "../page";
+import { redirect } from "next/navigation";
+
+export default async function LegacyApprovalsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  redirect(`/${locale}/admin/users`);
+}

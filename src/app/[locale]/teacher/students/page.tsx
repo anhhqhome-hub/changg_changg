@@ -24,7 +24,7 @@ export default async function TeacherStudentsPage({
     prisma.user.findMany({
       where: {
         memberships: { some: { class: { teacherId: teacher.id, ...(classId ? { id: classId } : {}) } } },
-        ...(query ? { OR: [{ name: { contains: query } }, { email: { contains: query } }] } : {})
+        ...(query ? { OR: [{ name: { contains: query } }, { username: { contains: query } }] } : {})
       },
       include: {
         studentProfile: true,
@@ -45,7 +45,7 @@ export default async function TeacherStudentsPage({
         totalStudents: "students",
         totalClasses: "active classes",
         totalSchools: "schools",
-        searchPlaceholder: "Search by name or email",
+        searchPlaceholder: "Search by name or username",
         allClasses: "All classes",
         noSchool: "No school on file",
         empty: query || classId ? "No students match this filter." : "No students yet. Add them from a class page.",
@@ -58,7 +58,7 @@ export default async function TeacherStudentsPage({
         totalStudents: "học viên",
         totalClasses: "lớp đang hoạt động",
         totalSchools: "trường học",
-        searchPlaceholder: "Tìm theo tên hoặc email",
+        searchPlaceholder: "Tìm theo tên hoặc username",
         allClasses: "Tất cả lớp",
         noSchool: "Chưa có thông tin trường",
         empty: query || classId ? "Không có học viên phù hợp bộ lọc này." : "Chưa có học viên nào. Thêm từ trang lớp học.",
@@ -107,7 +107,7 @@ export default async function TeacherStudentsPage({
                 <AvatarBadge name={student.name} />
                 <div className="min-w-0">
                   <p className="truncate font-black text-slate-950">{student.name}</p>
-                  <p className="truncate text-xs text-slate-500">{student.email}</p>
+                  <p className="truncate text-xs text-slate-500">@{student.username ?? "—"}</p>
                 </div>
               </div>
               <p className="text-xs font-medium text-slate-500">{student.studentProfile?.schoolName ?? text.noSchool}</p>

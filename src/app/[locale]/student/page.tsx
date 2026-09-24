@@ -40,18 +40,23 @@ export default async function StudentDashboard({ params }: { params: Promise<{ l
             return (
               <div key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 p-3">
                 <div>
-                  <p className="font-semibold">{assignment.version.title}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold">{assignment.version.title}</p>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-black ${assignment.version.mode === "PRACTICE" ? "bg-indigo-100 text-indigo-800" : "bg-slate-100 text-slate-700"}`}>
+                      {assignment.version.mode === "PRACTICE" ? "LUYỆN TẬP" : "KIỂM TRA"}
+                    </span>
+                  </div>
                   <p className="text-sm text-slate-600">Due {formatVietnamDateTime(assignment.version.deadline)} · {latest?.status ?? "NOT_STARTED"}</p>
                 </div>
                 {latest?.status === "IN_PROGRESS" ? (
                   <Button asChild><Link href={`/${locale}/student/attempts/${latest.id}`}>Continue</Link></Button>
-                ) : latest ? (
+                ) : latest && assignment.version.mode !== "PRACTICE" ? (
                   <Button asChild variant="outline"><Link href={`/${locale}/student/results/${latest.id}`}>Result</Link></Button>
                 ) : (
                   <form action={startAttemptAction}>
                     <input type="hidden" name="locale" value={locale} />
                     <input type="hidden" name="assignmentId" value={assignment.id} />
-                    <Button type="submit">Start exam</Button>
+                    <Button type="submit">{assignment.version.mode === "PRACTICE" ? "Luyện tiếp" : "Bắt đầu"}</Button>
                   </form>
                 )}
               </div>

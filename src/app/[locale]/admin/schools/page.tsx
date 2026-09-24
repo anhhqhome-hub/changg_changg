@@ -16,7 +16,7 @@ export default async function AdminSchoolsPage({ params }: { params: Promise<{ l
   const text = isEn
     ? {
         title: "Schools",
-        subtitle: "Manage the official school list used by student registration.",
+        subtitle: "Manage the official school list used when provisioning teachers, classes, and students.",
         add: "Add school",
         name: "School name",
         code: "Code",
@@ -32,7 +32,7 @@ export default async function AdminSchoolsPage({ params }: { params: Promise<{ l
       }
     : {
         title: "Trường học",
-        subtitle: "Quản lý danh sách trường chính thức dùng trong form đăng ký học viên.",
+        subtitle: "Quản lý danh sách trường chính thức để gán giáo viên, lớp học và học sinh.",
         add: "Thêm trường",
         name: "Tên trường",
         code: "Mã trường",

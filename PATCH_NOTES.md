@@ -1,47 +1,32 @@
-# Vercel build/runtime fix
+# School workflow revision
 
-This revision fixes the `Failed to collect page data` failure caused by database runtime preparation being executed while Next.js imports App Routes during `next build`.
+## Account model
+- Removed public student registration flow; `/register` redirects to login.
+- Login is username + password only through Better Auth's username plugin.
+- Email is an internal compatibility value only (`username@local.invalid`) and is never collected from users.
+- Admin provisions teacher accounts; teachers provision student accounts.
+- Admin can reset teacher passwords; teachers can reset passwords for students in their classes.
 
-## Changes
+## School and academic year
+- Admin manages schools and academic years.
+- Teacher profile belongs to a school.
+- Every new class is tied to the teacher's school and an active academic year.
+- Student membership is restricted to the same school at server-action level.
 
-- `src/lib/db.ts`
-  - Prisma is now initialized lazily through `getPrismaClient()`.
-  - Importing an App Route no longer initializes the adapter/database immediately.
-- `src/lib/runtime-database.ts`
-  - Detects the Next build lifecycle and avoids copying/opening the Vercel `/tmp` SQLite runtime database during build collection.
-  - At real Vercel runtime, local SQLite is still copied to `/tmp/changg-changg/dev.db`.
-- `src/app/api/**/route.ts`
-  - Explicitly uses Node.js runtime.
-  - Explicitly marks handlers as `force-dynamic` so Next does not try to statically prerender API handlers.
-- `src/app/[locale]/layout.tsx`
-  - Marked as `force-dynamic` because this application is session/database driven.
-- `next.config.ts`
-  - Keeps `prisma/dev.db` in output file tracing so the runtime template database is deployed.
+## Exams and practice tracking
+- Added `ExamMode`: `TEST` and `PRACTICE`.
+- TEST obeys `attemptsAllowed`.
+- PRACTICE can be repeated without limit; every attempt remains an `ExamAttempt` with an increasing attempt number.
+- Student pages display practice history and allow immediate repeated practice.
 
-## Important
+## Reports
+- Added teacher Reports navigation/page.
+- Filter by academic year, class, and student.
+- Summary includes test average, practice count, best practice result, and first-to-latest practice improvement.
+- Excel export includes `Tong hop`, `Kiem tra`, and `Luyen tap` sheets.
 
-The `/tmp` database mode is still ephemeral and is intended for demo/testing on Vercel. For persistent production data, set `DATABASE_URL=libsql://...` and `DATABASE_AUTH_TOKEN=...`.
-
-## V3 - Turbopack filesystem tracing fix
-
-- Removed dynamic `path.resolve(process.cwd(), value)` filesystem resolution from `runtime-database.ts`.
-- Vercel SQLite fallback now copies only the statically known `prisma/dev.db` template to `/tmp/changg-changg/dev.db`.
-- `next.config.ts` keeps `prisma/dev.db` in `outputFileTracingIncludes`, so the runtime template is explicitly bundled.
-- Removed the accidental empty root-level `dev.db`; `prisma/dev.db` is the only SQLite template.
-
-## V4 - runtime error hardening
-
-- Embedded the demo SQLite template in the server bundle; Vercel no longer depends on tracing `prisma/dev.db` into each function.
-- Vercel demo instances materialize the embedded DB into `/tmp/changg-changg/dev.db` on first database access.
-- Enabled Better Auth signed session cookie caching to make session reads less dependent on the same ephemeral function instance.
-- Founder/site settings now fail soft so a decorative DB read cannot take down the login page.
-- Added `/api/health/database` for safe database diagnostics (no secrets are returned).
-- Error UI now prints the Next.js digest and logs the client error to the browser console.
-
-For durable production writes, use a shared remote database (`libsql://...`/Turso or another persistent SQL service). Vercel `/tmp` remains demo-only storage.
-
-## V5 - TypeScript stack overflow fix
-
-- Replaced the generated `embedded-demo-db.ts` chain containing thousands of `+` binary expressions with a JSON-backed Base64 asset.
-- This avoids `RangeError: Maximum call stack size exceeded` in TypeScript 5.9.x during Next.js production type checking.
-- The embedded SQLite bytes are unchanged and still initialize the Vercel `/tmp` demo database at runtime.
+## Demo data
+- Bundled SQLite data is migrated to usernames and academic year `2026-2027`.
+- Demo school/classes are normalized to `THCS Nguyen Trai`.
+- Added a practice assignment with three historical attempts for `minhanh` to demonstrate progress reporting.
+- Demo password for all bundled accounts: `ChangeMe123!`.

@@ -11,16 +11,26 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
   const { locale, id } = await params;
   const teacher = await requireRole("TEACHER", locale);
   const isEn = locale === "en";
-  const [klass, availableStudents] = await Promise.all([
-    prisma.class.findFirstOrThrow({
-      where: { id, teacherId: teacher.id },
-      include: {
-        memberships: { include: { student: true }, orderBy: { student: { name: "asc" } } },
-        _count: { select: { assignments: true } }
-      }
-    }),
-    prisma.user.findMany({ where: { role: "STUDENT", status: "APPROVED", memberships: { none: { classId: id } } }, orderBy: { name: "asc" } })
-  ]);
+  const klass = await prisma.class.findFirstOrThrow({
+    where: { id, teacherId: teacher.id },
+    include: {
+      school: true,
+      academicYear: true,
+      memberships: { include: { student: true }, orderBy: { student: { name: "asc" } } },
+      _count: { select: { assignments: true } }
+    }
+  });
+  const availableStudents = await prisma.user.findMany({
+    where: {
+      role: "STUDENT",
+      status: "APPROVED",
+      memberships: { none: { classId: id } },
+      ...(klass.schoolId
+        ? { OR: [{ studentProfile: { schoolId: klass.schoolId } }, { studentProfile: { schoolId: null } }] }
+        : {})
+    },
+    orderBy: { name: "asc" }
+  });
 
   const text = isEn
     ? {
@@ -60,6 +70,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
                 {klass.archivedAt ? <Badge tone="slate">{text.archivedBadge}</Badge> : null}
               </div>
               <p className="mt-1 max-w-xl text-sm font-medium text-slate-600">{klass.description || text.noDescription}</p>
+              <p className="mt-2 text-xs font-black text-indigo-700">{klass.school?.name ?? "—"} · {klass.academicYear?.name ?? "—"}</p>
             </div>
           </div>
           <EditClassModal locale={locale} classId={klass.id} name={klass.name} description={klass.description ?? ""} />
@@ -86,11 +97,13 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
       <section className="rounded-2xl border border-white/70 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-black text-slate-950">{text.studentsTitle}</h2>
-          <AddStudentModal
-            locale={locale}
-            classId={klass.id}
-            students={availableStudents.map((student) => ({ id: student.id, name: student.name, email: student.email }))}
-          />
+          <div className="flex flex-wrap gap-2">
+            <AddStudentModal
+              locale={locale}
+              classId={klass.id}
+              students={availableStudents.map((student) => ({ id: student.id, name: student.name, username: student.username }))}
+            />
+          </div>
         </div>
         {klass.memberships.length ? (
           <div className="grid gap-2 sm:grid-cols-2">
@@ -100,7 +113,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
                   <AvatarBadge name={membership.student.name} />
                   <div className="min-w-0">
                     <p className="truncate font-bold text-slate-950">{membership.student.name}</p>
-                    <p className="truncate text-xs text-slate-500">{membership.student.email}</p>
+                    <p className="truncate text-xs text-slate-500">@{membership.student.username ?? "—"}</p>
                   </div>
                 </Link>
                 <RemoveStudentButton locale={locale} classId={klass.id} studentId={membership.student.id} studentName={membership.student.name} />

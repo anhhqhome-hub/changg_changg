@@ -11,7 +11,7 @@ function sqlitePathFromUrl(url: string) {
 }
 
 async function main() {
-  const dbPath = sqlitePathFromUrl(process.env.DATABASE_URL ?? "file:./dev.db");
+  const dbPath = sqlitePathFromUrl(process.env.DATABASE_URL ?? "file:./prisma/dev.db");
   const migrationsRoot = path.resolve("prisma/migrations");
   const applied = new Set<string>();
   if (existsSync(dbPath)) {

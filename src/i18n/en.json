@@ -1,9 +1,9 @@
 {
   "brand": "changg changg",
   "login": "Sign in",
-  "register": "Student registration",
+  "register": "Student accounts",
   "logout": "Sign out",
-  "email": "Email",
+  "email": "Username",
   "password": "Password",
   "name": "Full name",
   "dashboard": "Dashboard",

@@ -1,67 +1,58 @@
-import { registerStudentAction } from "@/actions/auth-actions";
 import { AuthCard } from "@/components/auth/auth-card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { getDictionary } from "@/i18n/get-dictionary";
+import { RegisterForm } from "@/components/auth/register-form";
+import { getOrCreateCurrentAcademicYear } from "@/lib/academic-year";
 import { prisma } from "@/lib/db";
-import type { Locale } from "@/i18n/config";
 
-export default async function RegisterPage({ params }: { params: Promise<{ locale: Locale }> }) {
-  const { locale } = await params;
-  const t = await getDictionary(locale);
-  const schools = await prisma.school.findMany({ where: { active: true }, orderBy: { name: "asc" } });
-  const text =
-    locale === "vi"
-      ? {
-          description: "Tạo tài khoản học viên. Admin sẽ duyệt trước khi bạn vào lớp.",
-          school: "Trường học",
-          grade: "Khối/lớp",
-          chooseSchool: "Chọn trường",
-          noSchools: "Chưa có trường đang hoạt động. Vui lòng nhờ admin thêm trường trước."
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export default async function RegisterPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale: rawLocale } = await params;
+  const locale = rawLocale === "en" ? "en" : "vi";
+  const isEn = locale === "en";
+  const currentAcademicYear = await getOrCreateCurrentAcademicYear();
+
+  const schools = await prisma.school.findMany({
+    where: {
+      active: true,
+      classes: {
+        some: {
+          archivedAt: null,
+          academicYearId: currentAcademicYear.id
         }
-      : {
-          description: "Create a student account. An admin will approve access before you enter classes.",
-          school: "School",
-          grade: "Grade",
-          chooseSchool: "Choose school",
-          noSchools: "No active schools yet. Please ask an admin to add a school first."
-        };
+      }
+    },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      classes: {
+        where: {
+          archivedAt: null,
+          academicYearId: currentAcademicYear.id
+        },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          teacher: { select: { name: true } }
+        }
+      }
+    }
+  });
+
   return (
-    <AuthCard title={t.register} description={text.description} footerHref={`/${locale}/login`} footerLabel={t.login}>
-      <form action={registerStudentAction} className="grid gap-4">
-        <input type="hidden" name="locale" value={locale} />
-        <label className="grid gap-1 text-sm font-medium">
-          {t.name}
-          <Input name="name" required autoComplete="name" />
-        </label>
-        <label className="grid gap-1 text-sm font-medium">
-          {t.email}
-          <Input name="email" type="email" required autoComplete="email" />
-        </label>
-        <label className="grid gap-1 text-sm font-medium">
-          {t.password}
-          <Input name="password" type="password" required autoComplete="new-password" minLength={8} />
-        </label>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-1 text-sm font-medium">
-            {text.school}
-            <select name="schoolId" required className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm">
-              <option value="">{text.chooseSchool}</option>
-              {schools.map((school) => (
-                <option key={school.id} value={school.id}>
-                  {school.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            {text.grade}
-            <Input name="gradeLevel" />
-          </label>
-        </div>
-        {schools.length === 0 ? <p className="rounded-md bg-amber-50 p-3 text-sm font-semibold text-amber-900">{text.noSchools}</p> : null}
-        <Button type="submit">{t.register}</Button>
-      </form>
+    <AuthCard
+      title={isEn ? "Create student account" : "Tạo tài khoản học sinh"}
+      description={
+        isEn
+          ? `Create an account with a username, then choose your school and class for the current academic year ${currentAcademicYear.name}. No email is required.`
+          : `Tự tạo tài khoản bằng username, chọn trường và lớp. Năm học hiện tại ${currentAcademicYear.name} được hệ thống tự xác định. Không cần email.`
+      }
+      footerHref={`/${locale}/login`}
+      footerLabel={isEn ? "Already have an account? Sign in" : "Đã có tài khoản? Đăng nhập"}
+    >
+      <RegisterForm locale={locale} schools={schools} currentAcademicYearName={currentAcademicYear.name} />
     </AuthCard>
   );
 }

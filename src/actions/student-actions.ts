@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { calculateAttemptExpiresAt } from "@/domain/exam-timing";
+import { canStartAttempt } from "@/domain/attempt-policy";
 import { calculateTotalPoints } from "@/domain/scoring";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
@@ -33,7 +34,11 @@ export async function startAttemptAction(formData: FormData) {
   }
 
   const attemptCount = await prisma.examAttempt.count({ where: { assignmentId, studentId: student.id } });
-  if (attemptCount >= assignment.version.attemptsAllowed) {
+  if (!canStartAttempt({
+    mode: assignment.version.mode,
+    attemptCount,
+    attemptsAllowed: assignment.version.attemptsAllowed
+  })) {
     const latest = await prisma.examAttempt.findFirst({
       where: { assignmentId, studentId: student.id },
       orderBy: { attemptNumber: "desc" }

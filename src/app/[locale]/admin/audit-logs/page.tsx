@@ -11,7 +11,7 @@ export default async function AuditLogsPage() {
         {logs.map((log) => (
           <div key={log.id} className="rounded-md border border-slate-200 p-3 text-sm">
             <p className="font-semibold">{log.action} · {log.entityType}</p>
-            <p className="text-slate-600">{log.actor?.email ?? "System"} · {formatVietnamDateTime(log.createdAt)}</p>
+            <p className="text-slate-600">{log.actor?.username ? `@${log.actor.username}` : (log.actor?.name ?? "System")} · {formatVietnamDateTime(log.createdAt)}</p>
           </div>
         ))}
       </CardContent>

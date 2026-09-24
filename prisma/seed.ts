@@ -1,33 +1,35 @@
 import "dotenv/config";
-import { auth } from "../src/lib/auth";
+import { createProvisionedUser, normalizeUsername } from "../src/lib/accounts";
 import { prisma } from "../src/lib/db";
 import { gradeObjectiveAnswer } from "../src/domain/grading";
 import { calculateFinalScore, calculateTotalPoints } from "../src/domain/scoring";
 
 async function createUser(input: {
   name: string;
-  email: string;
+  username: string;
   password: string;
   role: "ADMIN" | "TEACHER" | "STUDENT";
   status: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
   preferredLocale?: "vi" | "en";
 }) {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
-  let id = existing?.id;
-  if (!id) {
-    const result = await auth.api.signUpEmail({
-      body: {
-        email: input.email,
-        password: input.password,
-        name: input.name,
-        preferredLocale: input.preferredLocale ?? "vi"
-      }
-    });
-    id = result.user.id;
+  const username = normalizeUsername(input.username);
+  const existing = await prisma.user.findUnique({ where: { username } });
+  let user = existing;
+  if (!user) {
+    user = await createProvisionedUser({
+      name: input.name,
+      username,
+      password: input.password,
+      role: input.role,
+      preferredLocale: input.preferredLocale ?? "vi"
+    }) as never;
   }
   return prisma.user.update({
-    where: { id },
+    where: { id: user.id },
     data: {
+      name: input.name,
+      username,
+      displayUsername: input.username,
       role: input.role,
       status: input.status,
       preferredLocale: input.preferredLocale ?? "vi",
@@ -65,18 +67,22 @@ async function main() {
   await prisma.teacherTask.deleteMany();
   await prisma.studentProfile.deleteMany();
   await prisma.teacherProfile.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.academicYear.deleteMany();
   await prisma.school.deleteMany();
 
   const admin = await createUser({
     name: process.env.SEED_ADMIN_NAME ?? "Admin trangg",
-    email: process.env.SEED_ADMIN_EMAIL ?? "admin@trangg.local",
+    username: process.env.SEED_ADMIN_USERNAME ?? "admin",
     password: adminPassword,
     role: "ADMIN",
     status: "APPROVED"
   });
   const teacher = await createUser({
     name: "Trang Nguyen",
-    email: process.env.SEED_TEACHER_EMAIL ?? "trang.teacher@trangg.local",
+    username: process.env.SEED_TEACHER_USERNAME ?? "trang.teacher",
     password: teacherPassword,
     role: "TEACHER",
     status: "APPROVED"
@@ -104,22 +110,33 @@ async function main() {
     schools.set(created.name, created);
   }
 
+  const academicYear = await prisma.academicYear.create({
+    data: {
+      name: "2026-2027",
+      startDate: new Date("2026-08-01T00:00:00+07:00"),
+      endDate: new Date("2027-05-31T23:59:59+07:00"),
+      active: true
+    }
+  });
+  const teacherSchool = schools.get("THCS Nguyen Trai")!;
+  await prisma.teacherProfile.update({ where: { userId: teacher.id }, data: { schoolId: teacherSchool.id } });
+
   const studentInputs = [
-    ["Nguyen Minh Anh", "minhanh@student.trangg.local", "Grade 9", "THCS Nguyen Trai"],
-    ["Tran Gia Huy", "giahuy@student.trangg.local", "Grade 10", "THPT Le Quy Don"],
-    ["Le Khanh Linh", "khanhlinh@student.trangg.local", "Grade 11", "THPT Tran Phu"],
-    ["Pham Duc Anh", "ducanh@student.trangg.local", "Grade 9", "THCS Nguyen Hue"]
+    ["Nguyen Minh Anh", "minhanh", "Grade 9", "THCS Nguyen Trai"],
+    ["Tran Gia Huy", "giahuy", "Grade 10", "THCS Nguyen Trai"],
+    ["Le Khanh Linh", "khanhlinh", "Grade 11", "THCS Nguyen Trai"],
+    ["Pham Duc Anh", "ducanh", "Grade 9", "THCS Nguyen Trai"]
   ] as const;
   const students = [];
-  for (const [name, email, gradeLevel, schoolName] of studentInputs) {
-    const student = await createUser({ name, email, password: studentPassword, role: "STUDENT", status: "APPROVED" });
+  for (const [name, username, gradeLevel, schoolName] of studentInputs) {
+    const student = await createUser({ name, username, password: studentPassword, role: "STUDENT", status: "APPROVED" });
     const school = schools.get(schoolName);
     await prisma.studentProfile.upsert({
       where: { userId: student.id },
       update: { gradeLevel, schoolName, schoolId: school?.id },
       create: {
         userId: student.id,
-        studentCode: `STU-${email.split("@")[0].toUpperCase()}`,
+        studentCode: `HS-${username.toUpperCase()}`,
         gradeLevel,
         schoolId: school?.id,
         schoolName,
@@ -128,16 +145,8 @@ async function main() {
     });
     students.push(student);
   }
-  await createUser({
-    name: "Hoang Mai",
-    email: "pending@student.trangg.local",
-    password: studentPassword,
-    role: "STUDENT",
-    status: "PENDING"
-  });
-
-  const classA = await prisma.class.create({ data: { name: "IELTS Foundation A1", description: "Evening class for A2-B1 learners.", teacherId: teacher.id } });
-  const classB = await prisma.class.create({ data: { name: "Grade 9 English", description: "School-life and exam practice.", teacherId: teacher.id } });
+  const classA = await prisma.class.create({ data: { name: "IELTS Foundation A1", description: "Evening class for A2-B1 learners.", teacherId: teacher.id, schoolId: teacherSchool.id, academicYearId: academicYear.id } });
+  const classB = await prisma.class.create({ data: { name: "Grade 9 English", description: "School-life and exam practice.", teacherId: teacher.id, schoolId: teacherSchool.id, academicYearId: academicYear.id } });
   await prisma.classMembership.createMany({
     data: [
       { classId: classA.id, studentId: students[0].id },
@@ -311,9 +320,109 @@ async function main() {
       versionId: version.id,
       targetType: "CLASS",
       classId: classA.id,
+      academicYearId: academicYear.id,
       createdById: teacher.id
     }
   });
+
+  const practiceExam = await prisma.exam.create({
+    data: {
+      title: "Daily English Practice",
+      description: "Bài luyện tập ngắn có thể làm lại không giới hạn để theo dõi tiến bộ.",
+      createdById: teacher.id,
+      versions: {
+        create: {
+          versionNumber: 1,
+          status: "PUBLISHED",
+          mode: "PRACTICE",
+          title: "Daily English Practice",
+          description: "Luyện tập từ vựng hằng ngày.",
+          instructions: "Bạn có thể làm lại bao nhiêu lần tùy ý. Mỗi lượt đều được lưu vào lịch sử tiến bộ.",
+          attemptsAllowed: 1,
+          showScoreAfterSubmit: true,
+          showCorrectAnswersAfterSubmit: true,
+          resultsReleaseMode: "IMMEDIATE",
+          publishedAt: new Date(),
+          sections: {
+            create: {
+              skill: "READING",
+              title: "Reading practice",
+              sortOrder: 1,
+              groups: {
+                create: {
+                  title: "Daily vocabulary",
+                  sortOrder: 1,
+                  questions: {
+                    create: {
+                      title: "Daily vocabulary",
+                      prompt: "Choose the word closest in meaning to 'quick'.",
+                      skill: "READING",
+                      questionType: "SINGLE_CHOICE",
+                      difficulty: "EASY",
+                      points: 1,
+                      tagsJson: JSON.stringify(["vocabulary", "daily-practice"]),
+                      sortOrder: 1,
+                      options: {
+                        create: [
+                          { label: "fast", value: "fast", isCorrect: true, sortOrder: 1 },
+                          { label: "slow", value: "slow", isCorrect: false, sortOrder: 2 },
+                          { label: "quiet", value: "quiet", isCorrect: false, sortOrder: 3 }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    include: { versions: true }
+  });
+  const practiceVersion = practiceExam.versions[0];
+  const practiceAssignment = await prisma.examAssignment.create({
+    data: {
+      examId: practiceExam.id,
+      versionId: practiceVersion.id,
+      targetType: "CLASS",
+      classId: classA.id,
+      academicYearId: academicYear.id,
+      createdById: teacher.id
+    }
+  });
+  const practiceQuestion = await prisma.examQuestion.findFirstOrThrow({
+    where: { group: { section: { versionId: practiceVersion.id } } },
+    include: { options: true }
+  });
+  const correctPracticeOption = practiceQuestion.options.find((option) => option.isCorrect)!;
+  const wrongPracticeOption = practiceQuestion.options.find((option) => !option.isCorrect)!;
+  for (const [index, score] of [0, 1, 1].entries()) {
+    const submittedAt = new Date(Date.now() - (3 - index) * 24 * 60 * 60 * 1000);
+    await prisma.examAttempt.create({
+      data: {
+        assignmentId: practiceAssignment.id,
+        studentId: students[0].id,
+        versionId: practiceVersion.id,
+        attemptNumber: index + 1,
+        startedAt: new Date(submittedAt.getTime() - 6 * 60 * 1000),
+        submittedAt,
+        status: "GRADED",
+        autoScore: score,
+        finalScore: score,
+        totalPoints: 1,
+        timeSpentSec: 360 - index * 60,
+        releaseResults: true,
+        answers: {
+          create: {
+            questionId: practiceQuestion.id,
+            selectedOptionIdsJson: JSON.stringify([score ? correctPracticeOption.id : wrongPracticeOption.id]),
+            score
+          }
+        }
+      }
+    });
+  }
 
   await prisma.teacherTask.createMany({
     data: [
@@ -406,8 +515,8 @@ async function main() {
 
   await prisma.notification.createMany({
     data: [
-      { userId: admin.id, type: "ACCOUNT_PENDING", title: "New account waiting for approval", href: "/vi/admin/approvals" },
       { userId: students[0].id, type: "EXAM_ASSIGNED", title: "New exam assigned", href: `/vi/student/exams/${assignment.id}` },
+      { userId: students[0].id, type: "EXAM_ASSIGNED", title: "New practice assigned", href: `/vi/student/exams/${practiceAssignment.id}` },
       { userId: teacher.id, type: "SUBMISSION_RECEIVED", title: "Submissions ready to review", href: "/vi/teacher/grading" }
     ]
   });
@@ -423,9 +532,9 @@ async function main() {
   });
 
   console.log("Seed complete");
-  console.log(`Admin: ${admin.email} / ${adminPassword}`);
-  console.log(`Teacher: ${teacher.email} / ${teacherPassword}`);
-  console.log(`Student: ${students[0].email} / ${studentPassword}`);
+  console.log(`Admin: ${admin.username} / ${adminPassword}`);
+  console.log(`Teacher: ${teacher.username} / ${teacherPassword}`);
+  console.log(`Student: ${students[0].username} / ${studentPassword}`);
 }
 
 main()

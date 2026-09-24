@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 const initialState: LoginActionState = {};
 
 export function LoginForm({
-  emailLabel,
+  usernameLabel,
   passwordLabel,
   submitLabel,
   pendingLabel
 }: {
-  emailLabel: string;
+  usernameLabel: string;
   passwordLabel: string;
   submitLabel: string;
   pendingLabel?: string;
@@ -27,15 +27,15 @@ export function LoginForm({
         </div>
       ) : null}
       <label className="grid gap-1 text-sm font-medium">
-        {emailLabel}
-        <Input name="email" type="email" required autoComplete="email" />
+        {usernameLabel}
+        <Input name="username" required autoComplete="username" minLength={3} maxLength={30} />
       </label>
       <label className="grid gap-1 text-sm font-medium">
         {passwordLabel}
-        <Input name="password" type="password" required autoComplete="current-password" />
+        <Input name="password" type="password" required autoComplete="current-password" minLength={8} />
       </label>
       <Button type="submit" disabled={pending}>
-        {pending ? (pendingLabel ?? "Signing in...") : submitLabel}
+        {pending ? (pendingLabel ?? "Đang đăng nhập...") : submitLabel}
       </Button>
     </form>
   );

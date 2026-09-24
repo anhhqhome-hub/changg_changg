@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, ClipboardCheck, GraduationCap, LayoutDashboard, Library, School, Settings, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, BookOpen, CalendarDays, ClipboardCheck, Database, GraduationCap, LayoutDashboard, Library, School, Settings, Users } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { LocaleSwitcher } from "@/components/app/locale-switcher";
 import { LogoutButton } from "@/components/app/logout-button";
@@ -8,16 +8,17 @@ import { prisma } from "@/lib/db";
 import type { AppUser } from "@/lib/permissions";
 import type { LucideIcon } from "lucide-react";
 
-type NavKey = "dashboard" | "workspace" | "approvals" | "users" | "schools" | "classes" | "audit" | "questions" | "exams" | "grading" | "students" | "settings";
+type NavKey = "dashboard" | "workspace" | "users" | "schools" | "academicYears" | "classes" | "data" | "audit" | "questions" | "exams" | "grading" | "students" | "reports" | "settings";
 type NavItem = [key: NavKey, href: string, icon: LucideIcon];
 
 const nav: Record<AppUser["role"], NavItem[]> = {
   ADMIN: [
     ["dashboard", "", LayoutDashboard],
-    ["approvals", "/approvals", ShieldCheck],
     ["schools", "/schools", School],
+    ["academicYears", "/academic-years", CalendarDays],
     ["users", "/users", Users],
     ["classes", "/classes", BookOpen],
+    ["data", "/data", Database],
     ["audit", "/audit-logs", ClipboardCheck],
     ["settings", "/settings", Settings]
   ],
@@ -27,7 +28,8 @@ const nav: Record<AppUser["role"], NavItem[]> = {
     ["questions", "/question-bank", Library],
     ["exams", "/exams", BookOpen],
     ["grading", "/grading", ClipboardCheck],
-    ["students", "/students", GraduationCap]
+    ["students", "/students", GraduationCap],
+    ["reports", "/reports", BarChart3]
   ],
   STUDENT: [
     ["dashboard", "", LayoutDashboard],
@@ -40,29 +42,33 @@ const labels: Record<"vi" | "en", Record<NavKey, string>> = {
   vi: {
     dashboard: "Tổng quan",
     workspace: "Hôm nay",
-    approvals: "Duyệt",
     users: "Tài khoản",
     schools: "Trường",
+    academicYears: "Năm học",
     classes: "Lớp",
+    data: "Dữ liệu",
     audit: "Nhật ký",
     questions: "Câu hỏi",
     exams: "Đề",
     grading: "Chấm",
     students: "Học viên",
+    reports: "Báo cáo",
     settings: "Cài đặt"
   },
   en: {
     dashboard: "Overview",
     workspace: "Today",
-    approvals: "Approvals",
     users: "Users",
     schools: "Schools",
+    academicYears: "Academic years",
     classes: "Classes",
+    data: "Data",
     audit: "Audit",
     questions: "Questions",
     exams: "Exams",
     grading: "Grading",
     students: "Students",
+    reports: "Reports",
     settings: "Settings"
   }
 };

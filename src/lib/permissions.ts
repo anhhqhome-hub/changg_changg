@@ -8,7 +8,7 @@ export { canAccessRole } from "@/domain/permissions";
 export type AppUser = {
   id: string;
   name: string;
-  email: string;
+  username: string | null;
   role: Role;
   status: AccountStatus;
   preferredLocale: string;
@@ -25,7 +25,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     select: {
       id: true,
       name: true,
-      email: true,
+      username: true,
       role: true,
       status: true,
       preferredLocale: true

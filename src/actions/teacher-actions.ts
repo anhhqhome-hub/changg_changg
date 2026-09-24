@@ -10,6 +10,7 @@ import { gradeObjectiveAnswer, isManualQuestion } from "@/domain/grading";
 import { calculateFinalScore, calculateTotalPoints } from "@/domain/scoring";
 import { askTeacherAgent, generateQuestionsWithGroq, reviewImportedQuestionsWithGroq, type AiQuestion } from "@/lib/ai";
 import { prisma } from "@/lib/db";
+import { getOrCreateCurrentAcademicYear } from "@/lib/academic-year";
 import { requireRole } from "@/lib/permissions";
 import { parseJson } from "@/lib/utils";
 
@@ -60,7 +61,12 @@ export async function createClassAction(formData: FormData) {
   const teacher = await requireRole("TEACHER", locale);
   const name = z.string().min(2).parse(formData.get("name"));
   const description = z.string().optional().parse(formData.get("description") || undefined);
-  await prisma.class.create({ data: { name, description, teacherId: teacher.id } });
+  const profile = await prisma.teacherProfile.findUniqueOrThrow({ where: { userId: teacher.id }, select: { schoolId: true } });
+  if (!profile.schoolId) throw new Error("TEACHER_SCHOOL_REQUIRED");
+  const academicYear = await getOrCreateCurrentAcademicYear();
+  await prisma.class.create({
+    data: { name, description, teacherId: teacher.id, schoolId: profile.schoolId, academicYearId: academicYear.id }
+  });
   revalidatePath(`/${locale}/teacher/classes`);
 }
 
@@ -307,11 +313,41 @@ export async function addStudentToClassAction(formData: FormData) {
   const teacher = await requireRole("TEACHER", locale);
   const classId = z.string().parse(formData.get("classId"));
   const studentId = z.string().parse(formData.get("studentId"));
-  await prisma.class.findFirstOrThrow({ where: { id: classId, teacherId: teacher.id } });
+  const klass = await prisma.class.findFirstOrThrow({
+    where: { id: classId, teacherId: teacher.id },
+    select: { id: true, schoolId: true }
+  });
+  const student = await prisma.user.findFirstOrThrow({
+    where: { id: studentId, role: "STUDENT", status: "APPROVED" },
+    include: { studentProfile: true }
+  });
+  if (klass.schoolId && student.studentProfile?.schoolId && student.studentProfile.schoolId !== klass.schoolId) {
+    throw new Error("STUDENT_BELONGS_TO_ANOTHER_SCHOOL");
+  }
+  if (klass.schoolId) {
+    const school = await prisma.school.findUnique({ where: { id: klass.schoolId }, select: { name: true } });
+    if (student.studentProfile) {
+      if (!student.studentProfile.schoolId) {
+        await prisma.studentProfile.update({
+          where: { userId: student.id },
+          data: { schoolId: klass.schoolId, schoolName: school?.name ?? student.studentProfile.schoolName }
+        });
+      }
+    } else {
+      await prisma.studentProfile.create({
+        data: {
+          userId: student.id,
+          studentCode: `HS-${(student.username ?? student.id.slice(0, 8)).toUpperCase()}-${student.id.slice(0, 6).toUpperCase()}`,
+          schoolId: klass.schoolId,
+          schoolName: school?.name ?? null
+        }
+      });
+    }
+  }
   await prisma.classMembership.upsert({
-    where: { classId_studentId: { classId, studentId } },
+    where: { classId_studentId: { classId, studentId: student.id } },
     update: {},
-    create: { classId, studentId }
+    create: { classId, studentId: student.id }
   });
   revalidatePath(`/${locale}/teacher/classes/${classId}`);
 }
@@ -402,6 +438,7 @@ export async function createExamAction(formData: FormData) {
   const teacher = await requireRole("TEACHER", locale);
   const title = z.string().min(2).parse(formData.get("title"));
   const description = z.string().optional().parse(formData.get("description") || undefined);
+  const mode = z.enum(["TEST", "PRACTICE"]).default("TEST").parse(formData.get("mode") || "TEST");
   const exam = await prisma.exam.create({
     data: {
       title,
@@ -410,9 +447,16 @@ export async function createExamAction(formData: FormData) {
       versions: {
         create: {
           versionNumber: 1,
+          mode,
           title,
           description,
-          instructions: "Read every question carefully. Your answers autosave while you work.",
+          attemptsAllowed: mode === "PRACTICE" ? 1 : 1,
+          showScoreAfterSubmit: true,
+          showCorrectAnswersAfterSubmit: mode === "PRACTICE",
+          resultsReleaseMode: "IMMEDIATE",
+          instructions: mode === "PRACTICE"
+            ? "Luyện tập không giới hạn lượt. Hệ thống lưu toàn bộ quá trình để giáo viên theo dõi tiến bộ."
+            : "Đọc kỹ câu hỏi. Đây là bài kiểm tra và số lượt làm bị giới hạn.",
           sections: {
             create: [
               { skill: "READING", title: "Reading", sortOrder: 1 },
@@ -508,6 +552,33 @@ export async function addQuestionToExamAction(formData: FormData) {
   void group.id;
 }
 
+export async function updateExamModeAction(formData: FormData) {
+  const locale = localeSchema.parse(formData.get("locale") || "vi");
+  const teacher = await requireRole("TEACHER", locale);
+  const examId = z.string().min(1).parse(formData.get("examId"));
+  const versionId = z.string().min(1).parse(formData.get("versionId"));
+  const mode = z.enum(["TEST", "PRACTICE"]).parse(formData.get("mode"));
+  const attemptsAllowed = mode === "TEST"
+    ? z.coerce.number().int().min(1).max(20).parse(formData.get("attemptsAllowed") || 1)
+    : 1;
+  const version = await prisma.examVersion.findFirstOrThrow({
+    where: { id: versionId, examId, exam: { createdById: teacher.id } }
+  });
+  await prisma.examVersion.update({
+    where: { id: version.id },
+    data: {
+      mode,
+      attemptsAllowed,
+      showScoreAfterSubmit: true,
+      showCorrectAnswersAfterSubmit: mode === "PRACTICE" ? true : version.showCorrectAnswersAfterSubmit,
+      resultsReleaseMode: mode === "PRACTICE" ? "IMMEDIATE" : version.resultsReleaseMode
+    }
+  });
+  revalidatePath(`/${locale}/teacher/exams/${examId}/builder`);
+  revalidatePath(`/${locale}/teacher/exams`);
+  revalidatePath(`/${locale}/student`);
+}
+
 export async function publishExamAction(formData: FormData) {
   const locale = localeSchema.parse(formData.get("locale") || "vi");
   const teacher = await requireRole("TEACHER", locale);
@@ -587,15 +658,29 @@ export async function assignExamActionWithState(_state: AssignExamActionState, f
     where: { id: versionId, examId, exam: { createdById: teacher.id } },
     include: { sections: { include: { groups: { include: { questions: true } } } } }
   });
+  const targetClass = classId
+    ? await prisma.class.findFirst({
+        where: { id: classId, teacherId: teacher.id, archivedAt: null },
+        select: { id: true, academicYearId: true }
+      })
+    : null;
   const targetStudents = classId
     ? await prisma.classMembership.findMany({
         where: { classId, class: { teacherId: teacher.id, archivedAt: null } },
         select: { studentId: true }
       })
     : await prisma.user.findMany({
-        where: { id: studentId, role: "STUDENT", status: "APPROVED" },
+        where: { id: studentId, role: "STUDENT", status: "APPROVED", memberships: { some: { class: { teacherId: teacher.id } } } },
         select: { id: true }
       }).then((users) => users.map((user) => ({ studentId: user.id })));
+  const directStudentYear = !classId && studentId
+    ? await prisma.classMembership.findFirst({
+        where: { studentId, class: { teacherId: teacher.id, archivedAt: null, academicYearId: { not: null } } },
+        orderBy: { createdAt: "desc" },
+        select: { class: { select: { academicYearId: true } } }
+      })
+    : null;
+  const academicYearId = targetClass?.academicYearId ?? directStudentYear?.class.academicYearId ?? null;
   if (targetStudents.length === 0) return { error: classId ? "CLASS_HAS_NO_STUDENTS" : "STUDENT_NOT_AVAILABLE" };
   if (version.status === "DRAFT") {
     const questionCount = version.sections.flatMap((section) => section.groups.flatMap((group) => group.questions)).length;
@@ -615,6 +700,7 @@ export async function assignExamActionWithState(_state: AssignExamActionState, f
       targetType: classId ? "CLASS" : "STUDENT",
       classId,
       studentId,
+      academicYearId,
       createdById: teacher.id
     }
   });
@@ -622,7 +708,7 @@ export async function assignExamActionWithState(_state: AssignExamActionState, f
     data: targetStudents.map((student) => ({
       userId: student.studentId,
       type: "EXAM_ASSIGNED",
-      title: "Bạn có bài kiểm tra mới",
+      title: version.mode === "PRACTICE" ? "Bạn có bài luyện tập mới" : "Bạn có bài kiểm tra mới",
       href: `/${locale}/student/exams/${assignment.id}`
     }))
   });

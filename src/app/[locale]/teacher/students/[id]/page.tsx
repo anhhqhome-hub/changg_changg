@@ -29,7 +29,9 @@ export default async function StudentAnalyticsPage({ params }: { params: Promise
   const attempts = await prisma.examAttempt.findMany({
     where: { studentId: id, assignment: { exam: { createdById: teacher.id } } },
     include: {
-      answers: { include: { question: true } }
+      answers: { include: { question: true } },
+      version: true,
+      assignment: { include: { class: { include: { academicYear: true } }, academicYear: true } }
     },
     orderBy: { startedAt: "asc" }
   });
@@ -100,16 +102,18 @@ export default async function StudentAnalyticsPage({ params }: { params: Promise
           <AvatarBadge name={student.name} className="h-14 w-14 text-lg" />
           <div>
             <h1 className="text-2xl font-black text-slate-950">{student.name}</h1>
-            <p className="text-sm font-medium text-slate-600">{student.studentProfile?.schoolName ?? text.noSchool} · {student.email}</p>
+            <p className="text-sm font-medium text-slate-600">{student.studentProfile?.schoolName ?? text.noSchool} · @{student.username ?? "—"}</p>
           </div>
         </div>
-        {student.memberships.length ? (
-          <div className="flex flex-wrap gap-1.5">
-            {student.memberships.map((membership) => (
-              <Badge key={membership.id} tone="indigo">{membership.class.name}</Badge>
-            ))}
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {student.memberships.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {student.memberships.map((membership) => (
+                <Badge key={membership.id} tone="indigo">{membership.class.name}</Badge>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ScoreCard label={text.averageScore} value={`${overview.averageScore}%`} />
@@ -127,7 +131,9 @@ export default async function StudentAnalyticsPage({ params }: { params: Promise
         <CardContent className="space-y-2">
           {attempts.slice(-6).reverse().map((attempt) => (
             <div key={attempt.id} className="flex items-center justify-between rounded-md bg-slate-50 p-3">
-              <span>{formatVietnamDate(attempt.submittedAt ?? attempt.startedAt)}</span>
+              <span>
+                {formatVietnamDate(attempt.submittedAt ?? attempt.startedAt)} · {attempt.version.mode === "PRACTICE" ? (isEn ? "Practice" : "Luyện tập") : (isEn ? "Test" : "Kiểm tra")} #{attempt.attemptNumber}
+              </span>
               <span className="font-semibold">{attempt.finalScore} / {attempt.totalPoints}</span>
             </div>
           ))}

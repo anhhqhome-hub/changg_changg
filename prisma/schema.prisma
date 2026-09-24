@@ -55,6 +55,11 @@ enum ExamLifecycle {
   ARCHIVED
 }
 
+enum ExamMode {
+  TEST
+  PRACTICE
+}
+
 enum ResultsReleaseMode {
   IMMEDIATE
   AFTER_DEADLINE
@@ -89,6 +94,8 @@ model User {
   name            String
   email           String        @unique
   emailVerified   Boolean       @default(false)
+  username        String?       @unique
+  displayUsername String?
   image           String?
   role            Role          @default(STUDENT)
   status          AccountStatus @default(PENDING)
@@ -189,6 +196,8 @@ model School {
   contact   String?
   active    Boolean          @default(true)
   students  StudentProfile[]
+  teachers  TeacherProfile[]
+  classes   Class[]
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 }
@@ -197,11 +206,27 @@ model TeacherProfile {
   id             String  @id @default(cuid())
   userId         String  @unique
   user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId       String?
+  school         School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
   teacherCode    String  @unique
   displayName    String
   bio            String?
   phoneNumber    String?
   specialization String?
+
+  @@index([schoolId])
+}
+
+model AcademicYear {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  startDate DateTime?
+  endDate   DateTime?
+  active    Boolean   @default(true)
+  classes   Class[]
+  assignments ExamAssignment[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Class {
@@ -209,14 +234,21 @@ model Class {
   name        String
   description String?
   archivedAt  DateTime?
-  teacherId   String
-  teacher     User              @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
-  memberships ClassMembership[]
+  teacherId     String
+  teacher       User              @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  schoolId      String?
+  school        School?           @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  academicYearId String?
+  academicYear  AcademicYear?     @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
+  memberships   ClassMembership[]
   assignments ExamAssignment[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
   @@index([teacherId])
+  @@index([schoolId])
+  @@index([academicYearId])
+  @@unique([teacherId, name, academicYearId])
 }
 
 model ClassMembership {
@@ -342,6 +374,7 @@ model ExamVersion {
   exam                          Exam               @relation(fields: [examId], references: [id], onDelete: Cascade)
   versionNumber                 Int
   status                        ExamLifecycle      @default(DRAFT)
+  mode                          ExamMode           @default(TEST)
   title                         String
   description                   String?
   instructions                  String?
@@ -444,6 +477,8 @@ model ExamAssignment {
   classId     String?
   class       Class?               @relation(fields: [classId], references: [id], onDelete: Cascade)
   studentId   String?
+  academicYearId String?
+  academicYear AcademicYear? @relation(fields: [academicYearId], references: [id], onDelete: SetNull)
   createdById String
   createdBy   User                 @relation("AssignmentCreator", fields: [createdById], references: [id], onDelete: Cascade)
   attempts    ExamAttempt[]
@@ -452,6 +487,7 @@ model ExamAssignment {
   @@index([versionId])
   @@index([classId])
   @@index([studentId])
+  @@index([academicYearId])
 }
 
 model ExamAttempt {

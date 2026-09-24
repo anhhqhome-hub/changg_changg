@@ -10,7 +10,7 @@ export function CreateExamModal({ locale }: { locale: string }) {
     ? {
         trigger: "New exam",
         title: "Create exam draft",
-        description: "Name the exam first. You will add questions in the builder right after this.",
+        description: "Choose assessment mode now. Practice can be repeated without limit; tests have a fixed attempt limit.",
         titlePlaceholder: "Reading and Writing - School Life",
         descriptionPlaceholder: "Short note for this exam",
         submit: "Create draft"
@@ -18,7 +18,7 @@ export function CreateExamModal({ locale }: { locale: string }) {
     : {
         trigger: "Tạo đề",
         title: "Tạo bản nháp đề",
-        description: "Đặt tên đề trước. Sau đó bạn sẽ vào builder để thêm câu hỏi ngay.",
+        description: "Chọn chế độ ngay từ đầu. Luyện tập được làm lại không giới hạn; kiểm tra có giới hạn số lượt.",
         titlePlaceholder: "Reading and Writing - School Life",
         descriptionPlaceholder: "Ghi chú ngắn cho đề này",
         submit: "Tạo bản nháp"
@@ -28,6 +28,13 @@ export function CreateExamModal({ locale }: { locale: string }) {
     <Modal title={text.title} description={text.description} triggerLabel={text.trigger} triggerIcon="plus">
       <form action={createExamAction} className="grid gap-3">
         <input type="hidden" name="locale" value={locale} />
+        <label className="grid gap-1 text-sm font-bold">
+          {isEn ? "Mode" : "Chế độ"}
+          <select name="mode" defaultValue="TEST" className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm">
+            <option value="TEST">{isEn ? "Test / assessment" : "Kiểm tra"}</option>
+            <option value="PRACTICE">{isEn ? "Practice - unlimited retries" : "Luyện tập - làm lại không giới hạn"}</option>
+          </select>
+        </label>
         <label className="grid gap-1 text-sm font-bold">
           {isEn ? "Exam title" : "Tên đề"}
           <Input name="title" placeholder={text.titlePlaceholder} required autoFocus />

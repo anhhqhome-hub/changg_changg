@@ -1,8 +1,10 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { username } from "better-auth/plugins";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
+import { hashPassword, verifyPassword } from "@/lib/password";
 
 export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
@@ -11,11 +13,13 @@ export const auth = betterAuth({
     provider: "sqlite"
   }),
   emailAndPassword: {
-    enabled: true
+    enabled: true,
+    disableSignUp: true,
+    password: {
+      hash: hashPassword,
+      verify: verifyPassword
+    }
   },
-  // Vercel demo mode can run on multiple function instances. Keep a signed
-  // session cache in the browser so ordinary session checks do not require
-  // the same ephemeral SQLite instance that handled sign-in.
   session: {
     cookieCache: {
       enabled: true,
@@ -35,7 +39,7 @@ export const auth = betterAuth({
       status: {
         type: ["PENDING", "APPROVED", "REJECTED", "SUSPENDED"],
         required: false,
-        defaultValue: "PENDING",
+        defaultValue: "APPROVED",
         input: false
       },
       preferredLocale: {
@@ -55,7 +59,14 @@ export const auth = betterAuth({
       joins: true
     }
   },
-  plugins: [nextCookies()]
+  plugins: [
+    username({
+      minUsernameLength: 3,
+      maxUsernameLength: 30,
+      immutableUsername: true
+    }),
+    nextCookies()
+  ]
 });
 
 export type AuthSession = typeof auth.$Infer.Session;

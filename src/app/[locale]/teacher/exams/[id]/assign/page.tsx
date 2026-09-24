@@ -8,17 +8,25 @@ import { requireRole } from "@/lib/permissions";
 export default async function AssignExamPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
   const teacher = await requireRole("TEACHER", locale);
-  const [exam, classes, students] = await Promise.all([
+  const [exam, classes] = await Promise.all([
     prisma.exam.findFirstOrThrow({ where: { id, createdById: teacher.id }, include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } } }),
-    prisma.class.findMany({ where: { teacherId: teacher.id, archivedAt: null } }),
-    prisma.user.findMany({ where: { role: "STUDENT", status: "APPROVED" }, orderBy: { name: "asc" } })
+    prisma.class.findMany({
+      where: { teacherId: teacher.id, archivedAt: null },
+      include: { academicYear: true, memberships: { include: { student: { select: { id: true, name: true, username: true } } } } },
+      orderBy: { createdAt: "desc" }
+    })
   ]);
+  const students = Array.from(
+    new Map(classes.flatMap((klass) => klass.memberships.map((membership) => [membership.student.id, membership.student] as const))).values()
+  ).sort((a, b) => a.name.localeCompare(b.name));
   const version = exam.versions[0];
   const isEn = locale === "en";
+  const modeLabel = version?.mode === "PRACTICE" ? (isEn ? "Practice" : "Luyện tập") : (isEn ? "Test" : "Kiểm tra");
+
   return (
     <>
       <Card className="max-w-2xl">
-        <CardHeader><CardTitle>{isEn ? "Assign" : "Giao đề"} {exam.title}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{isEn ? "Assign" : "Giao"} {exam.title} · {modeLabel}</CardTitle></CardHeader>
         <CardContent>
         {!version || version.status !== "PUBLISHED" ? (
           <p className="text-sm text-slate-600">
@@ -33,14 +41,14 @@ export default async function AssignExamPage({ params }: { params: Promise<{ loc
               {isEn ? "Class" : "Lớp"}
               <select name="classId" className="h-11 rounded-md border border-slate-300 bg-white px-3">
                 <option value="">{isEn ? "Selected student only" : "Chỉ một học sinh"}</option>
-                {classes.map((klass) => <option key={klass.id} value={klass.id}>{klass.name}</option>)}
+                {classes.map((klass) => <option key={klass.id} value={klass.id}>{klass.name} · {klass.academicYear?.name ?? "—"}</option>)}
               </select>
             </label>
             <label className="grid gap-1 text-sm font-medium">
               {isEn ? "Student" : "Học sinh"}
               <select name="studentId" className="h-11 rounded-md border border-slate-300 bg-white px-3">
                 <option value="">{isEn ? "Whole class only" : "Chỉ cả lớp"}</option>
-                {students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}
+                {students.map((student) => <option key={student.id} value={student.id}>{student.name} · @{student.username ?? "—"}</option>)}
               </select>
             </label>
             <Button type="submit">{isEn ? "Assign" : "Giao đề"}</Button>

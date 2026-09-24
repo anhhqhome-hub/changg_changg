@@ -13,8 +13,8 @@ export function AuthCard({
   title: string;
   description: string;
   children: React.ReactNode;
-  footerHref: string;
-  footerLabel: string;
+  footerHref?: string;
+  footerLabel?: string;
   beforeCard?: React.ReactNode;
 }) {
   return (
@@ -29,9 +29,11 @@ export function AuthCard({
           </CardHeader>
           <CardContent>
             {children}
-            <Link href={footerHref} className="mt-5 block text-center text-sm font-semibold text-indigo-700 hover:text-indigo-900">
-              {footerLabel}
-            </Link>
+            {footerHref && footerLabel ? (
+              <Link href={footerHref} className="mt-5 block text-center text-sm font-semibold text-indigo-700 hover:text-indigo-900">
+                {footerLabel}
+              </Link>
+            ) : null}
           </CardContent>
         </Card>
       </div>
