@@ -786,15 +786,28 @@ export async function publishExamAction(formData: FormData) {
   const locale = localeSchema.parse(formData.get("locale") || "vi");
   const teacher = await requireRole("TEACHER", locale);
   const examId = z.string().parse(formData.get("examId"));
+  const requestedMode = formData.get("mode");
+  const mode = requestedMode ? z.enum(["TEST", "PRACTICE"]).parse(requestedMode) : undefined;
+  const requestedAttempts = formData.get("attemptsAllowed");
   const version = await prisma.examVersion.findFirstOrThrow({
     where: { examId, status: "DRAFT", exam: { createdById: teacher.id } },
     include: { sections: { include: { groups: { include: { questions: true } } } } }
   });
   const questionCount = version.sections.flatMap((section) => section.groups.flatMap((group) => group.questions)).length;
   if (questionCount === 0) throw new Error("EXAM_NEEDS_QUESTIONS");
+  const finalMode = mode ?? version.mode;
+  const attemptsAllowed = finalMode === "PRACTICE" ? 1 : z.coerce.number().int().min(1).max(20).parse(requestedAttempts || version.attemptsAllowed);
   await prisma.examVersion.update({
     where: { id: version.id },
-    data: { status: "PUBLISHED", publishedAt: new Date() }
+    data: {
+      status: "PUBLISHED",
+      publishedAt: new Date(),
+      mode: finalMode,
+      attemptsAllowed,
+      showScoreAfterSubmit: true,
+      showCorrectAnswersAfterSubmit: finalMode === "PRACTICE" ? true : version.showCorrectAnswersAfterSubmit,
+      resultsReleaseMode: finalMode === "PRACTICE" ? "IMMEDIATE" : version.resultsReleaseMode
+    }
   });
   await prisma.auditLog.create({
     data: { actorUserId: teacher.id, action: "EXAM_PUBLISHED", entityType: "ExamVersion", entityId: version.id }

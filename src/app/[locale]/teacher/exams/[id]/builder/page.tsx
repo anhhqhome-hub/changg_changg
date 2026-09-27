@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Library, Plus } from "lucide-react";
-import { addQuestionToExamAction, assignExamActionWithState, publishExamAction, updateExamGroupContentAction, updateExamModeAction, updateExamQuestionAction } from "@/actions/teacher-actions";
+import { addQuestionToExamAction, assignExamActionWithState, publishExamAction, updateExamGroupContentAction, updateExamQuestionAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -134,15 +134,26 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
             </div>
             <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">{exam.description || text.subtitle}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             <Button asChild variant="outline">
               <Link href={`/${locale}/teacher/question-bank`}>
                 <Library className="h-4 w-4" /> {text.backBank}
               </Link>
             </Button>
-            <form action={publishExamAction}>
+            <form action={publishExamAction} className="flex flex-wrap items-end gap-2">
               <input type="hidden" name="locale" value={locale} />
               <input type="hidden" name="examId" value={exam.id} />
+              <label className="grid gap-1 text-[10px] font-black uppercase text-slate-500">
+                {isEn ? "Mode" : "Chế độ"}
+                <select name="mode" defaultValue={version.mode} className="h-10 rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900">
+                  <option value="TEST">{isEn ? "Test" : "Kiểm tra"}</option>
+                  <option value="PRACTICE">{isEn ? "Practice" : "Luyện tập"}</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-[10px] font-black uppercase text-slate-500">
+                {isEn ? "Attempts" : "Số lượt"}
+                <Input name="attemptsAllowed" type="number" min="1" max="20" defaultValue={version.attemptsAllowed} className="h-10 w-20 text-xs font-bold" />
+              </label>
               <Button type="submit" disabled={version.status !== "DRAFT"}>
                 <CheckCircle2 className="h-4 w-4" /> {text.publish}
               </Button>
@@ -271,23 +282,6 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
               <SummaryRow label={text.mode} value={version.mode === "PRACTICE" ? (isEn ? "Practice" : "Luyện tập") : (isEn ? "Test" : "Kiểm tra")} />
               <SummaryRow label={text.attempts} value={version.mode === "PRACTICE" ? (isEn ? "Unlimited" : "Không giới hạn") : version.attemptsAllowed} />
               <SummaryRow label={text.release} value={version.resultsReleaseMode} />
-              <form action={updateExamModeAction} className="grid gap-2 rounded-xl border border-slate-200 p-3">
-                <input type="hidden" name="locale" value={locale} />
-                <input type="hidden" name="examId" value={exam.id} />
-                <input type="hidden" name="versionId" value={version.id} />
-                <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-                  {isEn ? "Assessment mode" : "Chế độ bài"}
-                  <select name="mode" defaultValue={version.mode} className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold normal-case text-slate-900">
-                    <option value="TEST">{isEn ? "Test" : "Kiểm tra"}</option>
-                    <option value="PRACTICE">{isEn ? "Practice - unlimited retries" : "Luyện tập - không giới hạn lượt"}</option>
-                  </select>
-                </label>
-                <label className="grid gap-1 text-xs font-black uppercase text-slate-500">
-                  {isEn ? "Test attempt limit" : "Số lượt tối đa khi kiểm tra"}
-                  <input name="attemptsAllowed" type="number" min="1" max="20" defaultValue={version.attemptsAllowed} className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold normal-case text-slate-900" />
-                </label>
-                <Button type="submit" variant="outline" size="sm">{isEn ? "Save mode" : "Lưu chế độ"}</Button>
-              </form>
               <AssignExamModal
                 action={assignExamActionWithState}
                 locale={locale}
