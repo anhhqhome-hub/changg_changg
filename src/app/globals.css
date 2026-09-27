@@ -120,7 +120,7 @@ a {
   }
 
   .auth-stationery-book { top: 12%; }
-  .auth-stationery-pen { top: 20%; }
-  .auth-stationery-light { bottom: 13%; }
-  .auth-stationery-spark { bottom: 9%; }
+  .auth-stationery-pen { top: 7%; }
+  .auth-stationery-light { bottom: 4%; }
+  .auth-stationery-spark { bottom: 4%; }
 }
