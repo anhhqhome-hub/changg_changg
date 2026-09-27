@@ -191,15 +191,29 @@ function hasAnswer(answer: RunnerAnswer | undefined) {
 function PracticeFeedback({ question, answer, locale }: { question: RunnerQuestion; answer: RunnerAnswer; locale: string }) {
   const correctOptions = question.options.filter((option) => option.isCorrect);
   const selected = new Set(answer.selectedOptionIds ?? []);
-  const isCorrect = correctOptions.length > 0 && selected.size === correctOptions.length && correctOptions.every((option) => selected.has(option.id));
-  let correctText = correctOptions.map((option) => option.label).join(", ");
-  if (!correctText && question.correctAnswersJson) {
-    try {
-      const parsed: unknown = JSON.parse(question.correctAnswersJson);
-      correctText = Array.isArray(parsed) ? parsed.flat(Infinity).map(String).join(", ") : JSON.stringify(parsed);
-    } catch {
-      correctText = question.correctAnswersJson;
-    }
+  const result = practiceResult(question, answer, selected);
+  if (result === "manual") return <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm font-black text-slate-700">{locale === "vi" ? "Câu này chờ giáo viên chấm" : "This question will be graded by the teacher"}</div>;
+  return <div className={`mt-4 rounded-lg border p-3 text-sm font-black ${result ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-rose-200 bg-rose-50 text-rose-900"}`}>{result ? (locale === "vi" ? "ĐÚNG" : "CORRECT") : (locale === "vi" ? "SAI" : "INCORRECT")}</div>;
+}
+
+function practiceResult(question: RunnerQuestion, answer: RunnerAnswer, selected: Set<string>): boolean | "manual" {
+  if (["ESSAY", "SHORT_ANSWER", "SPEAKING_RECORDING"].includes(question.questionType)) return "manual";
+  if (question.options.some((option) => option.isCorrect)) {
+    const correct = question.options.filter((option) => option.isCorrect);
+    return selected.size === correct.length && correct.every((option) => selected.has(option.id));
   }
-  return <div className={`mt-4 rounded-lg border p-3 text-sm ${isCorrect ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}><p className="font-black">{isCorrect ? (locale === "vi" ? "Chính xác" : "Correct") : (locale === "vi" ? "Xem lại đáp án" : "Check the answer")}</p><p className="mt-1"><span className="font-bold">{locale === "vi" ? "Đáp án:" : "Answer:"}</span> {correctText || (locale === "vi" ? "Giáo viên chấm" : "Teacher graded")}</p></div>;
+  if (!question.correctAnswersJson) return false;
+  try {
+    const expected: unknown = JSON.parse(question.correctAnswersJson);
+    if (question.questionType.includes("FILL_BLANK")) {
+      const answers = answer.blankAnswers ?? [];
+      const accepted = Array.isArray(expected) ? expected.flat(Infinity).map((item) => String(item).trim().toLocaleLowerCase()) : [];
+      return answers.every((item, index) => accepted[index] === (item ?? "").trim().toLocaleLowerCase());
+    }
+    if (question.questionType === "ORDERING") return JSON.stringify(answer.orderingAnswers ?? []) === JSON.stringify(expected);
+    if (question.questionType === "MATCHING") return JSON.stringify(answer.matchingAnswers ?? {}) === JSON.stringify(expected);
+  } catch {
+    return false;
+  }
+  return false;
 }

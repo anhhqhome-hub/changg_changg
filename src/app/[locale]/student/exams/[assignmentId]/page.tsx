@@ -1,4 +1,4 @@
-import { startAttemptAction } from "@/actions/student-actions";
+import { restartPracticeAttemptAction, startAttemptAction } from "@/actions/student-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatVietnamDateTime } from "@/lib/date";
@@ -40,7 +40,10 @@ export default async function StudentExamDetail({ params }: { params: Promise<{ 
           </div>
         ) : null}
         {latest?.status === "IN_PROGRESS" ? (
-          <Button asChild><a href={`/${locale}/student/attempts/${latest.id}`}>Continue</a></Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild><a href={`/${locale}/student/attempts/${latest.id}`}>Continue</a></Button>
+            {isPractice ? <form action={restartPracticeAttemptAction}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="assignmentId" value={assignment.id} /><Button type="submit" variant="outline">{locale === "vi" ? "Làm lại từ đầu" : "Restart"}</Button></form> : null}
+          </div>
         ) : (
           <form action={startAttemptAction}>
             <input type="hidden" name="locale" value={locale} />

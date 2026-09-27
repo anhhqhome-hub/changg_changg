@@ -66,3 +66,16 @@ export async function startAttemptAction(formData: FormData) {
   });
   redirect(`/${locale}/student/attempts/${attempt.id}`);
 }
+
+export async function restartPracticeAttemptAction(formData: FormData) {
+  const locale = z.string().default("vi").parse(formData.get("locale") || "vi");
+  const student = await requireRole("STUDENT", locale);
+  const assignmentId = z.string().parse(formData.get("assignmentId"));
+  const assignment = await prisma.examAssignment.findFirstOrThrow({
+    where: { id: assignmentId, OR: [{ studentId: student.id }, { class: { memberships: { some: { studentId: student.id } } } }] },
+    select: { id: true, version: { select: { mode: true } } }
+  });
+  if (assignment.version.mode !== "PRACTICE") throw new Error("PRACTICE_ONLY");
+  await prisma.examAttempt.deleteMany({ where: { assignmentId: assignment.id, studentId: student.id, status: "IN_PROGRESS" } });
+  await startAttemptAction(formData);
+}
