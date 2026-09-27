@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Library, Plus } from "lucide-react";
-import { addQuestionToExamAction, assignExamActionWithState, publishExamAction, updateExamModeAction } from "@/actions/teacher-actions";
+import { addQuestionToExamAction, assignExamActionWithState, publishExamAction, updateExamModeAction, updateExamQuestionAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AssignExamModal } from "@/components/teacher/assign-exam-modal";
+import { QuestionEditorForm } from "@/components/teacher/question-editor-form";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import type { Skill } from "@/generated/prisma/enums";
@@ -175,11 +176,21 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                             <div className="min-w-0">
                               <p className="text-xs font-black uppercase text-slate-400">#{index + 1}</p>
                               <h2 className="font-black text-slate-950">{question.title}</h2>
-                              <p className="mt-1 line-clamp-2 text-sm text-slate-600">{question.prompt}</p>
+                              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{question.prompt}</p>
                             </div>
                             <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">{question.points} pts</span>
                           </div>
                           <p className="mt-3 text-xs font-bold text-slate-500">{question.questionType}</p>
+                          <div className="mt-3 grid gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                            {question.options.length ? question.options.map((option, optionIndex) => (
+                              <div key={option.id} className={`flex gap-2 text-sm ${option.isCorrect ? "font-black text-emerald-700" : "text-slate-700"}`}>
+                                <span>{String.fromCharCode(65 + optionIndex)}.</span>
+                                <span>{option.label}</span>
+                                {option.isCorrect ? <span className="text-xs uppercase">{isEn ? "correct" : "đúng"}</span> : null}
+                              </div>
+                            )) : <span className="text-sm text-slate-500">{isEn ? "No options" : "Không có lựa chọn"}</span>}
+                          </div>
+                          <QuestionEditorForm action={updateExamQuestionAction} locale={locale} examId={exam.id} questionId={question.id} title={question.title} prompt={question.prompt} instructions={question.instructions} points={question.points} skill={section.skill} questionType={question.questionType} options={question.options} correctAnswersJson={question.correctAnswersJson} isEn={isEn} disabled={version.status !== "DRAFT"} />
                         </article>
                       ))
                     ) : (

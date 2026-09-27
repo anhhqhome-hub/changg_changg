@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BookOpen, FileUp, Search, Sparkles } from "lucide-react";
-import { createQuestionAction } from "@/actions/teacher-actions";
+import { createQuestionAction, updateQuestionBankItemAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
 import { AiQuestionModal } from "@/components/teacher/ai-generation-modals";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
+import { QuestionEditorForm } from "@/components/teacher/question-editor-form";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 
@@ -17,7 +18,7 @@ export default async function QuestionBankPage({ params }: { params: Promise<{ l
   const isEn = locale === "en";
   const questions = await prisma.questionBankItem.findMany({
     where: { createdById: teacher.id },
-    include: { _count: { select: { examQuestions: true } } },
+    include: { options: true, _count: { select: { examQuestions: true } } },
     orderBy: { createdAt: "desc" },
     take: 80
   });
@@ -119,10 +120,20 @@ export default async function QuestionBankPage({ params }: { params: Promise<{ l
                   </div>
                   <h2 className="font-black text-slate-950">{question.title}</h2>
                   <p className="mt-1 line-clamp-3 text-sm text-slate-600">{question.prompt}</p>
+                  <div className="mt-3 grid gap-1 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                    {question.options.length ? question.options.map((option, optionIndex) => (
+                      <div key={option.id} className={`flex gap-2 text-sm ${option.isCorrect ? "font-black text-emerald-700" : "text-slate-700"}`}>
+                        <span>{String.fromCharCode(65 + optionIndex)}.</span>
+                        <span>{option.label}</span>
+                        {option.isCorrect ? <span className="text-xs uppercase">{isEn ? "correct" : "đúng"}</span> : null}
+                      </div>
+                    )) : <span className="text-sm text-slate-500">{isEn ? "No options" : "Không có lựa chọn"}</span>}
+                  </div>
                   <div className="mt-4 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
                     <span>{question.points} pts</span>
                     <span>{question._count.examQuestions} {isEn ? "exam uses" : "lần dùng"}</span>
                   </div>
+                  <QuestionEditorForm action={updateQuestionBankItemAction} locale={locale} questionId={question.id} title={question.title} prompt={question.prompt} points={question.points} skill={question.skill} questionType={question.questionType} options={question.options} correctAnswersJson={question.correctAnswersJson} isEn={isEn} />
                 </article>
               ))}
             </div>

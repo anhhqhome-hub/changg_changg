@@ -461,6 +461,100 @@ export async function createQuestionAction(formData: FormData) {
   redirect(`/${locale}/teacher/question-bank?created=${created.id}`);
 }
 
+export async function updateQuestionBankItemAction(formData: FormData) {
+  const locale = localeSchema.parse(formData.get("locale") || "vi");
+  const teacher = await requireRole("TEACHER", locale);
+  const id = z.string().min(1).parse(formData.get("questionId"));
+  const title = z.string().min(2).parse(formData.get("title"));
+  const prompt = z.string().min(2).parse(formData.get("prompt"));
+  const questionType = z.string().parse(formData.get("questionType"));
+  const skill = z.string().parse(formData.get("skill"));
+  const points = z.coerce.number().positive().parse(formData.get("points") || 1);
+  const options = parseEditorOptions(formData.get("options"));
+  const correctAnswers = z.string().optional().parse(formData.get("correctAnswers") || "") ?? "";
+  const item = await prisma.questionBankItem.findFirstOrThrow({ where: { id, createdById: teacher.id } });
+
+  await prisma.questionBankItem.update({
+    where: { id: item.id },
+    data: {
+      title,
+      prompt,
+      skill: skill as never,
+      questionType: questionType as never,
+      points,
+      correctAnswersJson: editorCorrectAnswersJson(questionType, correctAnswers),
+      options: {
+        deleteMany: {},
+        create: options.map((option, index) => ({
+          label: option,
+          value: option,
+          sortOrder: index + 1,
+          isCorrect: isEditorCorrectOption(correctAnswers, option, index)
+        }))
+      }
+    }
+  });
+  revalidatePath(`/${locale}/teacher/question-bank`);
+}
+
+export async function updateExamQuestionAction(formData: FormData) {
+  const locale = localeSchema.parse(formData.get("locale") || "vi");
+  const teacher = await requireRole("TEACHER", locale);
+  const examId = z.string().min(1).parse(formData.get("examId"));
+  const id = z.string().min(1).parse(formData.get("questionId"));
+  const title = z.string().min(2).parse(formData.get("title"));
+  const prompt = z.string().min(2).parse(formData.get("prompt"));
+  const instructions = z.string().optional().parse(formData.get("instructions") || "") || null;
+  const points = z.coerce.number().positive().parse(formData.get("points") || 1);
+  const options = parseEditorOptions(formData.get("options"));
+  const correctAnswers = z.string().optional().parse(formData.get("correctAnswers") || "") ?? "";
+  const question = await prisma.examQuestion.findFirstOrThrow({
+    where: { id, group: { section: { version: { examId, exam: { createdById: teacher.id }, status: "DRAFT" } } } }
+  });
+
+  await prisma.examQuestion.update({
+    where: { id: question.id },
+    data: {
+      title,
+      prompt,
+      instructions,
+      points,
+      correctAnswersJson: editorCorrectAnswersJson(question.questionType, correctAnswers),
+      options: {
+        deleteMany: {},
+        create: options.map((option, index) => ({
+          label: option,
+          value: option,
+          sortOrder: index + 1,
+          isCorrect: isEditorCorrectOption(correctAnswers, option, index)
+        }))
+      }
+    }
+  });
+  revalidatePath(`/${locale}/teacher/exams/${examId}/builder`);
+}
+
+function parseEditorOptions(value: FormDataEntryValue | null) {
+  return String(value ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[A-Z][\).:-]\s*/i, "").trim())
+    .filter(Boolean);
+}
+
+function isEditorCorrectOption(answer: string, option: string, optionIndex: number) {
+  const values = answer.split(/[,|;]/).map((item) => item.trim().toLocaleLowerCase()).filter(Boolean);
+  const letter = String.fromCharCode(97 + optionIndex);
+  return values.includes(letter) || values.includes(option.trim().toLocaleLowerCase());
+}
+
+function editorCorrectAnswersJson(questionType: string, answer: string) {
+  const values = answer.split(/[,|;]/).map((item) => item.trim()).filter(Boolean);
+  if (questionType === "FILL_BLANK" || questionType === "LISTENING_FILL_BLANK") return JSON.stringify(values);
+  if (questionType === "ORDERING") return JSON.stringify(values);
+  if (questionType === "MATCHING") return answer.trim() || JSON.stringify({});
+  return null;
+}
+
 export async function generateQuestionBankWithAIAction(formData: FormData) {
   const locale = localeSchema.parse(formData.get("locale") || "vi");
   const teacher = await requireRole("TEACHER", locale);
