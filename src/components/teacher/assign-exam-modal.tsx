@@ -18,6 +18,8 @@ export function AssignExamModal({
   students,
   defaultTimeLimitMinutes,
   defaultDeadlineLocalValue,
+  defaultMode,
+  defaultAttemptsAllowed,
   text
 }: {
   action: (state: AssignExamActionState, formData: FormData) => AssignExamActionState | Promise<AssignExamActionState>;
@@ -29,6 +31,8 @@ export function AssignExamModal({
   students: Target[];
   defaultTimeLimitMinutes?: number | null;
   defaultDeadlineLocalValue?: string;
+  defaultMode: "TEST" | "PRACTICE";
+  defaultAttemptsAllowed: number;
   text: {
     open: string;
     title: string;
@@ -52,6 +56,8 @@ export function AssignExamModal({
     submit: string;
     submitting: string;
     cancel: string;
+    mode: string;
+    attempts: string;
   };
 }) {
   const [open, setOpen] = useState(false);
@@ -93,6 +99,17 @@ export function AssignExamModal({
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="examId" value={examId} />
           <input type="hidden" name="versionId" value={versionId} />
+          <label className="grid gap-1 text-sm font-bold">
+            {text.mode}
+            <select name="mode" defaultValue={defaultMode} className="h-11 rounded-md border border-slate-300 bg-white px-3">
+              <option value="TEST">Kiểm tra / Test</option>
+              <option value="PRACTICE">Luyện tập / Practice</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-bold">
+            {text.attempts}
+            <input name="attemptsAllowed" type="number" min="1" max="20" defaultValue={defaultAttemptsAllowed} className="h-11 rounded-md border border-slate-300 bg-white px-3" />
+          </label>
           <fieldset className="grid gap-2">
             <legend className="text-sm font-bold">{text.targetLabel}</legend>
             <div className="grid gap-2 sm:grid-cols-2">

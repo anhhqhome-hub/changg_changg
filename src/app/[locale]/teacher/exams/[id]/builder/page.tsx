@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Library, Plus } from "lucide-react";
-import { addQuestionToExamAction, assignExamActionWithState, publishExamAction, updateExamGroupContentAction, updateExamQuestionAction } from "@/actions/teacher-actions";
+import { ArrowRight, Library, Plus } from "lucide-react";
+import { addQuestionToExamAction, assignExamActionWithState, updateExamGroupContentAction, updateExamQuestionAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { AssignExamModal } from "@/components/teacher/assign-exam-modal";
 import { QuestionEditorForm } from "@/components/teacher/question-editor-form";
 import { QuestionSlideNavigator } from "@/components/teacher/question-slide-navigator";
-import { Modal } from "@/components/ui/modal";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import type { Skill } from "@/generated/prisma/enums";
@@ -84,7 +83,7 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
     ? {
         builder: "Exam builder",
         subtitle: "Add questions from the bank by skill. Keep the draft clean, then publish and assign.",
-        publish: "Publish",
+        publish: "Publish & assign",
         assign: "Assign exam",
         backBank: "Question bank",
         questions: "questions",
@@ -99,13 +98,13 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         createMore: "Create more questions",
         added: "In this exam",
         bankUses: "uses",
-        assignOpen: "Assign exam", assignTitle: "Assign exam", assignDescription: "Set the schedule and choose who should receive", targetLabel: "Assign to", targetClass: "A whole class", targetStudent: "One student", classLabel: "Class", studentLabel: "Student", classPlaceholder: "Choose a class", studentPlaceholder: "Choose a student", chooseTarget: "Choose a class or a student before assigning.", errorClassEmpty: "This class has no students yet.", errorStudentUnavailable: "This student is not available for assignment.", errorNoQuestions: "Add at least one question before assigning.", errorNotAssignable: "This exam cannot be assigned yet.", success: "Exam assigned successfully.", assignSubmit: "Assign now", assigning: "Assigning...", cancel: "Cancel"
+        assignOpen: "Publish & assign", assignTitle: "Publish & assign exam", assignDescription: "Set the mode, schedule and choose who should receive", targetLabel: "Assign to", targetClass: "A whole class", targetStudent: "One student", classLabel: "Class", studentLabel: "Student", classPlaceholder: "Choose a class", studentPlaceholder: "Choose a student", chooseTarget: "Choose a class or a student before assigning.", errorClassEmpty: "This class has no students yet.", errorStudentUnavailable: "This student is not available for assignment.", errorNoQuestions: "Add at least one question before assigning.", errorNotAssignable: "This exam cannot be assigned yet.", success: "Exam published and assigned successfully.", assignSubmit: "Publish & assign", assigning: "Publishing & assigning...", cancel: "Cancel"
         ,timeLimit: "Time limit (minutes)", deadline: "Submission deadline", timingHint: "Leave the deadline empty to keep the exam open. Leave the time limit empty for unlimited time."
       }
     : {
         builder: "Soạn đề",
         subtitle: "Thêm câu hỏi từ ngân hàng theo đúng kỹ năng. Xong bản nháp thì xuất bản và giao bài.",
-        publish: "Xuất bản",
+        publish: "Xuất bản & giao đề",
         assign: "Giao đề",
         backBank: "Ngân hàng câu hỏi",
         questions: "câu",
@@ -120,7 +119,7 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         createMore: "Tạo thêm câu hỏi",
         added: "Trong đề này",
         bankUses: "lần dùng",
-        assignOpen: "Giao đề", assignTitle: "Giao đề", assignDescription: "Đặt lịch làm bài và chọn đối tượng nhận đề", targetLabel: "Giao cho", targetClass: "Cả lớp", targetStudent: "Một học sinh", classLabel: "Lớp", studentLabel: "Học sinh", classPlaceholder: "Chọn lớp", studentPlaceholder: "Chọn học sinh", chooseTarget: "Hãy chọn lớp hoặc học sinh trước khi giao đề.", errorClassEmpty: "Lớp này chưa có học sinh.", errorStudentUnavailable: "Học sinh này không thể nhận đề.", errorNoQuestions: "Hãy thêm ít nhất một câu hỏi trước khi giao đề.", errorNotAssignable: "Đề này chưa thể giao.", success: "Đã giao đề thành công.", assignSubmit: "Giao ngay", assigning: "Đang giao...", cancel: "Hủy"
+        assignOpen: "Xuất bản & giao đề", assignTitle: "Xuất bản & giao đề", assignDescription: "Chọn chế độ, lịch làm bài và đối tượng nhận đề", targetLabel: "Giao cho", targetClass: "Cả lớp", targetStudent: "Một học sinh", classLabel: "Lớp", studentLabel: "Học sinh", classPlaceholder: "Chọn lớp", studentPlaceholder: "Chọn học sinh", chooseTarget: "Hãy chọn lớp hoặc học sinh trước khi giao đề.", errorClassEmpty: "Lớp này chưa có học sinh.", errorStudentUnavailable: "Học sinh này không thể nhận đề.", errorNoQuestions: "Hãy thêm ít nhất một câu hỏi trước khi giao đề.", errorNotAssignable: "Đề này chưa thể giao.", success: "Đã xuất bản và giao đề thành công.", assignSubmit: "Xuất bản & giao đề", assigning: "Đang xử lý...", cancel: "Hủy"
         ,timeLimit: "Thời gian làm bài (phút)", deadline: "Hạn nộp bài", timingHint: "Để trống hạn nộp nếu muốn mở đề không giới hạn thời gian. Để trống thời gian làm bài nếu không giới hạn."
       };
 
@@ -142,24 +141,20 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                 <Library className="h-4 w-4" /> {text.backBank}
               </Link>
             </Button>
-            <Modal title={isEn ? "Publish exam" : "Xuất bản đề"} description={isEn ? "Choose the mode and attempt limit before publishing." : "Chọn chế độ và số lượt trước khi xuất bản đề."} triggerLabel={text.publish} triggerIcon="plus" triggerVariant="default">
-              <form action={publishExamAction} className="grid gap-4">
-                <input type="hidden" name="locale" value={locale} />
-                <input type="hidden" name="examId" value={exam.id} />
-                <label className="grid gap-1 text-sm font-black">
-                  {isEn ? "Assessment mode" : "Chế độ bài"}
-                  <select name="mode" defaultValue={version.mode} className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm">
-                    <option value="TEST">{isEn ? "Test" : "Kiểm tra"}</option>
-                    <option value="PRACTICE">{isEn ? "Practice - unlimited retries" : "Luyện tập - không giới hạn lượt"}</option>
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm font-black">
-                  {isEn ? "Maximum test attempts" : "Số lượt tối đa khi kiểm tra"}
-                  <Input name="attemptsAllowed" type="number" min="1" max="20" defaultValue={version.attemptsAllowed} />
-                </label>
-                <Button type="submit" disabled={version.status !== "DRAFT"}><CheckCircle2 className="h-4 w-4" /> {isEn ? "Confirm publish" : "Xác nhận xuất bản"}</Button>
-              </form>
-            </Modal>
+            <AssignExamModal
+              action={assignExamActionWithState}
+              locale={locale}
+              examId={exam.id}
+              versionId={version.id}
+              examTitle={exam.title}
+              classes={classes.map((item) => ({ id: item.id, name: `${item.name}${item.academicYear?.name ? ` · ${item.academicYear.name}` : ""}` }))}
+              students={students}
+              defaultTimeLimitMinutes={version.timeLimitMinutes}
+              defaultDeadlineLocalValue={version.deadline ? toDateTimeLocalValue(version.deadline) : ""}
+              defaultMode={version.mode}
+              defaultAttemptsAllowed={version.attemptsAllowed}
+              text={{ open: text.assignOpen, title: text.assignTitle, description: text.assignDescription, targetLabel: text.targetLabel, targetClass: text.targetClass, targetStudent: text.targetStudent, classLabel: text.classLabel, studentLabel: text.studentLabel, classPlaceholder: text.classPlaceholder, studentPlaceholder: text.studentPlaceholder, chooseTarget: text.chooseTarget, mode: text.mode, attempts: text.attempts, timeLimit: text.timeLimit, deadline: text.deadline, timingHint: text.timingHint, errorClassEmpty: text.errorClassEmpty, errorStudentUnavailable: text.errorStudentUnavailable, errorNoQuestions: text.errorNoQuestions, errorNotAssignable: text.errorNotAssignable, success: text.success, submit: text.assignSubmit, submitting: text.assigning, cancel: text.cancel }}
+            />
           </div>
         </div>
       </section>
@@ -282,18 +277,6 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
               <SummaryRow label={text.mode} value={version.mode === "PRACTICE" ? (isEn ? "Practice" : "Luyện tập") : (isEn ? "Test" : "Kiểm tra")} />
               <SummaryRow label={text.attempts} value={version.mode === "PRACTICE" ? (isEn ? "Unlimited" : "Không giới hạn") : version.attemptsAllowed} />
               <SummaryRow label={text.release} value={version.resultsReleaseMode} />
-              <AssignExamModal
-                action={assignExamActionWithState}
-                locale={locale}
-                examId={exam.id}
-                versionId={version.id}
-                examTitle={exam.title}
-                classes={classes.map((item) => ({ id: item.id, name: `${item.name}${item.academicYear?.name ? ` · ${item.academicYear.name}` : ""}` }))}
-                students={students}
-                defaultTimeLimitMinutes={version.timeLimitMinutes}
-                defaultDeadlineLocalValue={version.deadline ? toDateTimeLocalValue(version.deadline) : ""}
-                text={{ open: text.assignOpen, title: text.assignTitle, description: text.assignDescription, targetLabel: text.targetLabel, targetClass: text.targetClass, targetStudent: text.targetStudent, classLabel: text.classLabel, studentLabel: text.studentLabel, classPlaceholder: text.classPlaceholder, studentPlaceholder: text.studentPlaceholder, chooseTarget: text.chooseTarget, timeLimit: text.timeLimit, deadline: text.deadline, timingHint: text.timingHint, errorClassEmpty: text.errorClassEmpty, errorStudentUnavailable: text.errorStudentUnavailable, errorNoQuestions: text.errorNoQuestions, errorNotAssignable: text.errorNotAssignable, success: text.success, submit: text.assignSubmit, submitting: text.assigning, cancel: text.cancel }}
-              />
             </CardContent>
           </Card>
 

@@ -880,6 +880,9 @@ export async function assignExamActionWithState(_state: AssignExamActionState, f
   const versionId = z.string().parse(formData.get("versionId"));
   const classId = z.string().optional().parse(formData.get("classId") || undefined);
   const studentId = z.string().optional().parse(formData.get("studentId") || undefined);
+  const requestedMode = formData.get("mode");
+  const mode = requestedMode ? z.enum(["TEST", "PRACTICE"]).parse(requestedMode) : undefined;
+  const requestedAttempts = formData.get("attemptsAllowed");
   if ((!classId && !studentId) || (classId && studentId)) return { error: "ASSIGNMENT_TARGET_REQUIRED" };
 
   const timeLimitRaw = formData.get("timeLimitMinutes");
@@ -922,7 +925,9 @@ export async function assignExamActionWithState(_state: AssignExamActionState, f
   if (version.status === "DRAFT") {
     const questionCount = version.sections.flatMap((section) => section.groups.flatMap((group) => group.questions)).length;
     if (questionCount === 0) return { error: "EXAM_NEEDS_QUESTIONS" };
-    await prisma.examVersion.update({ where: { id: version.id }, data: { status: "PUBLISHED", publishedAt: new Date() } });
+    const finalMode = mode ?? version.mode;
+    const attemptsAllowed = finalMode === "PRACTICE" ? 1 : z.coerce.number().int().min(1).max(20).parse(requestedAttempts || version.attemptsAllowed);
+    await prisma.examVersion.update({ where: { id: version.id }, data: { status: "PUBLISHED", publishedAt: new Date(), mode: finalMode, attemptsAllowed, showScoreAfterSubmit: true, showCorrectAnswersAfterSubmit: finalMode === "PRACTICE", resultsReleaseMode: finalMode === "PRACTICE" ? "IMMEDIATE" : version.resultsReleaseMode } });
     await prisma.auditLog.create({
       data: { actorUserId: teacher.id, action: "EXAM_PUBLISHED", entityType: "ExamVersion", entityId: version.id }
     });
