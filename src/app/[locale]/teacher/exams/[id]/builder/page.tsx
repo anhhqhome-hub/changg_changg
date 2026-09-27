@@ -23,7 +23,7 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         take: 1,
         include: {
           sections: {
-            include: { groups: { include: { questions: { include: { options: true } } } } },
+            include: { groups: { include: { readingPassage: true, questions: { include: { options: true } } } } },
             orderBy: { sortOrder: "asc" }
           }
         }
@@ -169,6 +169,16 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                 </CardHeader>
                 <CardContent className="grid gap-4 lg:grid-cols-[1fr_300px]">
                   <div className="space-y-2">
+                    {section.groups.map((group) => group.readingPassage ? (
+                      <article key={`passage-${group.id}`} className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-5">
+                        <p className="text-sm font-black text-indigo-800">{group.title || (isEn ? "Reading passage" : "Đoạn đọc")}</p>
+                        {group.instructions ? <p className="mt-2 whitespace-pre-wrap text-sm font-semibold text-slate-700">{group.instructions}</p> : null}
+                        <div className="mt-4 whitespace-pre-wrap text-[15px] leading-7 text-slate-900">{group.readingPassage.body}</div>
+                        {group.readingPassage.instructions ? <p className="mt-3 text-sm italic text-slate-600">{group.readingPassage.instructions}</p> : null}
+                      </article>
+                    ) : group.instructions ? (
+                      <div key={`instructions-${group.id}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">{group.instructions}</div>
+                    ) : null)}
                     {sectionQuestions.length ? (
                       sectionQuestions.map((question, index) => (
                         <article key={question.id} className="rounded-xl border border-slate-200 bg-white p-3">
