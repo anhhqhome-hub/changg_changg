@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Library, Plus } from "lucide-react";
-import { addQuestionToExamAction, assignExamActionWithState, publishExamAction, updateExamModeAction, updateExamQuestionAction } from "@/actions/teacher-actions";
+import { addQuestionToExamAction, assignExamActionWithState, publishExamAction, updateExamGroupContentAction, updateExamModeAction, updateExamQuestionAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { AssignExamModal } from "@/components/teacher/assign-exam-modal";
 import { QuestionEditorForm } from "@/components/teacher/question-editor-form";
 import { prisma } from "@/lib/db";
@@ -169,19 +171,30 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                 </CardHeader>
                 <CardContent className="grid gap-4 lg:grid-cols-[1fr_300px]">
                   <div className="space-y-2">
-                    {section.groups.map((group) => group.readingPassage ? (
-                      <article key={`passage-${group.id}`} className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-5">
-                        <p className="text-sm font-black text-indigo-800">{group.title || (isEn ? "Reading passage" : "Đoạn đọc")}</p>
-                        {group.instructions ? <p className="mt-2 whitespace-pre-wrap text-sm font-semibold text-slate-700">{group.instructions}</p> : null}
-                        <div className="mt-4 whitespace-pre-wrap text-[15px] leading-7 text-slate-900">{group.readingPassage.body}</div>
-                        {group.readingPassage.instructions ? <p className="mt-3 text-sm italic text-slate-600">{group.readingPassage.instructions}</p> : null}
-                      </article>
-                    ) : group.instructions ? (
-                      <div key={`instructions-${group.id}`} className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">{group.instructions}</div>
-                    ) : null)}
                     {sectionQuestions.length ? (
-                      sectionQuestions.map((question, index) => (
-                        <article key={question.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                      sectionQuestions.map((question, index) => {
+                        const group = section.groups.find((candidate) => candidate.questions.some((item) => item.id === question.id));
+                        const isFirstInGroup = group?.questions[0]?.id === question.id;
+                        return <div key={question.id} className="space-y-2">
+                          {isFirstInGroup && group?.readingPassage ? <article className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-5">
+                            <p className="text-sm font-black text-indigo-800">{group.title || (isEn ? "Reading passage" : "Đoạn đọc")}</p>
+                            {group.instructions ? <p className="mt-2 whitespace-pre-wrap text-sm font-semibold text-slate-700">{group.instructions}</p> : null}
+                            <div className="mt-4 whitespace-pre-wrap text-[15px] leading-7 text-slate-900">{group.readingPassage.body}</div>
+                            {group.readingPassage.instructions ? <p className="mt-3 text-sm italic text-slate-600">{group.readingPassage.instructions}</p> : null}
+                            {version.status === "DRAFT" ? <details className="mt-4 rounded-lg border border-indigo-100 bg-white">
+                              <summary className="cursor-pointer list-none px-3 py-2 text-sm font-black text-indigo-800">{isEn ? "Edit section content" : "Sửa đề bài phần này"}</summary>
+                              <form action={updateExamGroupContentAction} className="grid gap-3 border-t border-indigo-100 p-3">
+                                <input type="hidden" name="locale" value={locale} /><input type="hidden" name="examId" value={exam.id} /><input type="hidden" name="groupId" value={group.id} />
+                                <Input name="title" defaultValue={group.title ?? ""} placeholder={isEn ? "Section title" : "Tiêu đề phần"} required />
+                                <Textarea name="instructions" defaultValue={group.instructions ?? ""} placeholder={isEn ? "Instructions" : "Hướng dẫn"} />
+                                <Input name="passageTitle" defaultValue={group.readingPassage.title} placeholder={isEn ? "Passage title" : "Tiêu đề đoạn đọc"} required />
+                                <Textarea name="passageBody" defaultValue={group.readingPassage.body} placeholder={isEn ? "Passage text" : "Nội dung đề bài"} required className="min-h-48" />
+                                <Textarea name="passageInstructions" defaultValue={group.readingPassage.instructions ?? ""} placeholder={isEn ? "Passage instructions" : "Hướng dẫn đoạn đọc"} />
+                                <Button type="submit" className="w-fit">{isEn ? "Save section" : "Lưu phần này"}</Button>
+                              </form>
+                            </details> : null}
+                          </article> : isFirstInGroup && group?.instructions ? <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">{group.instructions}</div> : null}
+                          <article className="rounded-xl border border-slate-200 bg-white p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-xs font-black uppercase text-slate-400">#{index + 1}</p>
@@ -200,8 +213,9 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                             )) : <span className="text-sm text-slate-500">{isEn ? "No options" : "Không có lựa chọn"}</span>}
                           </div>
                           <QuestionEditorForm action={updateExamQuestionAction} locale={locale} examId={exam.id} questionId={question.id} title={question.title} prompt={question.prompt} instructions={question.instructions} points={question.points} skill={section.skill} questionType={question.questionType} options={question.options} correctAnswersJson={question.correctAnswersJson} isEn={isEn} disabled={version.status !== "DRAFT"} />
-                        </article>
-                      ))
+                          </article>
+                        </div>;
+                      })
                     ) : (
                       <p className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm font-medium text-slate-500">{text.noQuestions}</p>
                     )}

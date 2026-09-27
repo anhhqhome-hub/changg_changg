@@ -539,6 +539,32 @@ export async function updateExamQuestionAction(formData: FormData) {
   revalidatePath(`/${locale}/teacher/exams/${examId}/builder`);
 }
 
+export async function updateExamGroupContentAction(formData: FormData) {
+  const locale = localeSchema.parse(formData.get("locale") || "vi");
+  const teacher = await requireRole("TEACHER", locale);
+  const examId = z.string().min(1).parse(formData.get("examId"));
+  const groupId = z.string().min(1).parse(formData.get("groupId"));
+  const title = z.string().min(1).parse(formData.get("title"));
+  const instructions = z.string().optional().parse(formData.get("instructions") || "") || null;
+  const passageTitle = z.string().optional().parse(formData.get("passageTitle") || "") || null;
+  const passageBody = z.string().optional().parse(formData.get("passageBody") || "") || null;
+  const passageInstructions = z.string().optional().parse(formData.get("passageInstructions") || "") || null;
+  const group = await prisma.questionGroup.findFirstOrThrow({
+    where: { id: groupId, section: { version: { examId, exam: { createdById: teacher.id }, status: "DRAFT" } } },
+    select: { id: true, readingPassageId: true }
+  });
+  await prisma.$transaction(async (tx) => {
+    await tx.questionGroup.update({ where: { id: group.id }, data: { title, instructions } });
+    if (group.readingPassageId && passageBody) {
+      await tx.readingPassage.update({ where: { id: group.readingPassageId }, data: { title: passageTitle ?? title, body: passageBody, instructions: passageInstructions } });
+    } else if (!group.readingPassageId && passageBody) {
+      const passage = await tx.readingPassage.create({ data: { title: passageTitle ?? title, body: passageBody, instructions: passageInstructions } });
+      await tx.questionGroup.update({ where: { id: group.id }, data: { readingPassageId: passage.id } });
+    }
+  });
+  revalidatePath(`/${locale}/teacher/exams/${examId}/builder`);
+}
+
 function parseEditorOptions(value: FormDataEntryValue | null) {
   return String(value ?? "")
     .split(/\r?\n/)
