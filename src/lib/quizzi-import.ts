@@ -220,9 +220,10 @@ function looksLikePassageTitle(line: string) {
  * the caller with the style map `u => mark`.
  */
 export function quizziHtmlToMarkedText(html: string) {
-  const withCorrectMarkers = html.replace(/<mark(?:\s[^>]*)?>([\s\S]*?)<\/mark>/gi, (_match, inner: string) => {
+  const withCorrectMarkers = html
+    .replace(/<(?:mark|strong|b)(?:\s[^>]*)?>([\s\S]*?)<\/(?:mark|strong|b)>/gi, (_match, inner: string) => {
     return `${inner} ${correctMarker}`;
-  });
+    });
 
   return decodeBasicHtmlEntities(
     withCorrectMarkers

@@ -61,7 +61,8 @@ export default async function AttemptPage({ params }: { params: Promise<{ locale
         instructions: question.instructions,
         questionType: question.questionType,
         points: question.points,
-        options: question.options.map((option) => ({ id: option.id, label: option.label, value: option.value }))
+        options: question.options.map((option) => ({ id: option.id, label: option.label, value: option.value, isCorrect: attempt.version.mode === "PRACTICE" ? option.isCorrect : undefined })),
+        correctAnswersJson: attempt.version.mode === "PRACTICE" ? question.correctAnswersJson : null
       }))
     }))
   }));
@@ -70,6 +71,7 @@ export default async function AttemptPage({ params }: { params: Promise<{ locale
       locale={locale}
       attemptId={attempt.id}
       title={attempt.version.title}
+      isPractice={attempt.version.mode === "PRACTICE"}
       expiresAt={attempt.expiresAt?.toISOString() ?? null}
       sections={sections}
       initialAnswers={answers}

@@ -10,7 +10,8 @@ export type RunnerQuestion = {
   instructions: string | null;
   questionType: string;
   points: number;
-  options: { id: string; label: string; value: string }[];
+  options: { id: string; label: string; value: string; isCorrect?: boolean }[];
+  correctAnswersJson?: string | null;
 };
 
 export type RunnerAnswer = {

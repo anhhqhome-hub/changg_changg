@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Flag, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, Flag, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ExamTimer } from "@/components/exam/exam-timer";
 import { QuestionNavigator } from "@/components/exam/question-navigator";
@@ -28,6 +28,7 @@ export function ExamRunner({
   attemptId,
   expiresAt,
   title,
+  isPractice,
   sections,
   initialAnswers
 }: {
@@ -35,6 +36,7 @@ export function ExamRunner({
   attemptId: string;
   expiresAt: string | null;
   title: string;
+  isPractice: boolean;
   sections: RunnerSection[];
   initialAnswers: Record<string, RunnerAnswer>;
 }) {
@@ -96,6 +98,10 @@ export function ExamRunner({
     else setSaveState("error");
   }
 
+  if (!currentQuestion) {
+    return <div className="grid min-h-screen place-items-center bg-slate-50 p-5"><div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-amber-950"><h1 className="text-xl font-black">{locale === "vi" ? "Đề chưa có câu hỏi" : "This exam has no questions"}</h1><p className="mt-2 text-sm">{locale === "vi" ? "Hãy quay lại và báo cho giáo viên để bổ sung đề bài." : "Return and ask your teacher to add questions."}</p></div></div>;
+  }
+
   const answered = new Set(questions.map((question, index) => (hasAnswer(answers[question.id]) ? index : -1)).filter((index) => index >= 0));
   const flagged = new Set(questions.map((question, index) => (answers[question.id]?.isFlagged ? index : -1)).filter((index) => index >= 0));
   const group = sections.flatMap((section) => section.groups).find((candidate) => candidate.questions.some((question) => question.id === currentQuestion.id));
@@ -142,6 +148,15 @@ export function ExamRunner({
               </Button>
             </div>
             <QuestionRenderer question={currentQuestion} answer={answers[currentQuestion.id] ?? {}} onChange={update} />
+            {isPractice && hasAnswer(answers[currentQuestion.id]) ? <PracticeFeedback question={currentQuestion} answer={answers[currentQuestion.id] ?? {}} locale={locale} /> : null}
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+              <Button type="button" variant="outline" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))}>
+                <ArrowLeft className="h-4 w-4" /> {locale === "vi" ? "Câu trước" : "Previous"}
+              </Button>
+              <Button type="button" variant="secondary" disabled={current === questions.length - 1} onClick={() => setCurrent((value) => Math.min(questions.length - 1, value + 1))}>
+                {locale === "vi" ? "Câu tiếp" : "Next"} <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </article>
         </section>
         <aside className="space-y-4">
@@ -171,4 +186,20 @@ function hasAnswer(answer: RunnerAnswer | undefined) {
       answer?.orderingAnswers?.length ||
       Object.keys(answer?.matchingAnswers ?? {}).length
   );
+}
+
+function PracticeFeedback({ question, answer, locale }: { question: RunnerQuestion; answer: RunnerAnswer; locale: string }) {
+  const correctOptions = question.options.filter((option) => option.isCorrect);
+  const selected = new Set(answer.selectedOptionIds ?? []);
+  const isCorrect = correctOptions.length > 0 && selected.size === correctOptions.length && correctOptions.every((option) => selected.has(option.id));
+  let correctText = correctOptions.map((option) => option.label).join(", ");
+  if (!correctText && question.correctAnswersJson) {
+    try {
+      const parsed: unknown = JSON.parse(question.correctAnswersJson);
+      correctText = Array.isArray(parsed) ? parsed.flat(Infinity).map(String).join(", ") : JSON.stringify(parsed);
+    } catch {
+      correctText = question.correctAnswersJson;
+    }
+  }
+  return <div className={`mt-4 rounded-lg border p-3 text-sm ${isCorrect ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}><p className="font-black">{isCorrect ? (locale === "vi" ? "Chính xác" : "Correct") : (locale === "vi" ? "Xem lại đáp án" : "Check the answer")}</p><p className="mt-1"><span className="font-bold">{locale === "vi" ? "Đáp án:" : "Answer:"}</span> {correctText || (locale === "vi" ? "Giáo viên chấm" : "Teacher graded")}</p></div>;
 }

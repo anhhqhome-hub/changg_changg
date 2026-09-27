@@ -12,7 +12,7 @@ import { askTeacherAgent, generateQuestionsWithGroq, reviewImportedQuestionsWith
 import { prisma } from "@/lib/db";
 import { getOrCreateCurrentAcademicYear } from "@/lib/academic-year";
 import { requireRole } from "@/lib/permissions";
-import { parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
+import { cleanQuizziMarkup, parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
 import { parseJson } from "@/lib/utils";
 
 const localeSchema = z.string().default("vi");
@@ -32,6 +32,7 @@ const supportedQuestionTypes = [
   "READING_SINGLE_CHOICE",
   "READING_MULTIPLE_CHOICE"
 ] as const;
+const correctMarker = "[[QUIZZI_CORRECT]]";
 
 type ImportedQuestion = {
   title: string;
@@ -982,12 +983,11 @@ async function parseExamImportFile(file: File) {
     return parseCsv(buffer.toString("utf8")).map(normalizeImportRow).filter(isImportedQuestion);
   }
   if (extension === "docx") {
-    // Quizzi-style Word files encode the correct choice with Word underline.
-    // Mammoth ignores underline by default, so preserve it as <mark> and turn it
-    // into a parser marker before stripping the rest of the HTML.
+    // Quizzi-style Word files encode the correct choice with underline or bold.
+    // Mammoth does not keep those marks in raw text, so map both to <mark> first.
     const htmlResult = await mammoth.convertToHtml(
       { buffer },
-      { styleMap: ["u => mark"] }
+      { styleMap: ["u => mark", "b => mark", "strong => mark"] }
     );
     const markedText = quizziHtmlToMarkedText(htmlResult.value);
     const quizziQuestions = parseQuizziWordText(markedText);
@@ -1009,6 +1009,8 @@ async function parseExamImportFile(file: File) {
       }));
     }
 
+    const markedQuestions = parseWordQuestions(markedText);
+    if (markedQuestions.length > 0) return markedQuestions;
     const rawResult = await mammoth.extractRawText({ buffer });
     return parseWordQuestions(rawResult.value);
   }
@@ -1274,13 +1276,14 @@ function parseWordBlock(block: string): ImportedQuestion | null {
   const typeLine = lines.find((line) => /^(type|loại)\s*:/i.test(line));
   const prompt = lines.find((line) => !/^(answer|đáp án|skill|type|loại)\s*:/i.test(line) && !/^[A-D][\).:-]\s+/i.test(line)) ?? "";
   if (!prompt) return null;
+  const markedOptionIndex = optionLines.findIndex((line) => line.includes(correctMarker));
   return {
     title: prompt.slice(0, 80),
     prompt,
     skill: normalizeSkill(skillLine?.split(":").slice(1).join(":").trim()),
     questionType: normalizeQuestionType(typeLine?.split(":").slice(1).join(":").trim() || (optionLines.length ? "SINGLE_CHOICE" : "ESSAY")),
-    options: optionLines.map((line) => line.replace(/^[A-D][\).:-]\s+/i, "").trim()),
-    answer: answerLine?.split(":").slice(1).join(":").trim() ?? "",
+    options: optionLines.map((line) => cleanQuizziMarkup(line.replace(/^[A-D][\).:-]\s+/i, "").trim())),
+    answer: answerLine?.split(":").slice(1).join(":").trim() ?? (markedOptionIndex >= 0 ? String.fromCharCode(65 + markedOptionIndex) : ""),
     points: 1
   };
 }

@@ -54,4 +54,17 @@ Sample passage.
     expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
     expect(questions[0].answer).toBe("B");
   });
+
+  it("keeps bold Word markers as correct answers", () => {
+    const html = `
+      <p>[&lt;g&gt;] Choose the correct answer [&lt;/g&gt;]</p>
+      <p>(&lt;1&gt;) A. first <strong>B. second</strong> C. third D. fourth</p>
+      <p>[&lt;br&gt;]</p>
+    `;
+    const markedText = quizziHtmlToMarkedText(html);
+    const questions = parseQuizziWordText(markedText);
+
+    expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
+    expect(questions[0].answer).toBe("B");
+  });
 });
