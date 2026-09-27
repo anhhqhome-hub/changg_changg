@@ -1,14 +1,24 @@
 import Link from "next/link";
 import { Building2, CalendarDays, Database, School, Users } from "lucide-react";
 import { ScoreCard } from "@/components/app/score-card";
+import { FirstLoginGuide } from "@/components/app/first-login-guide";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatVietnamDate } from "@/lib/date";
 import { prisma } from "@/lib/db";
 
-export default async function AdminDashboard({ params }: { params: Promise<{ locale: string }> }) {
+type RecentAuditLog = {
+  id: string;
+  action: string;
+  entityType: string;
+  createdAt: Date;
+  actor: { name: string } | null;
+};
+
+export default async function AdminDashboard({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ welcome?: string }> }) {
   const { locale } = await params;
+  const { welcome } = await searchParams;
   const isEn = locale === "en";
   const [students, teachers, schools, classes, activeYears, auditLogs] = await Promise.all([
     prisma.user.count({ where: { role: "STUDENT", status: "APPROVED" } }),
@@ -69,6 +79,8 @@ export default async function AdminDashboard({ params }: { params: Promise<{ loc
         </div>
       </section>
 
+      {welcome === "1" ? <FirstLoginGuide locale={locale} role="admin" /> : null}
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <ScoreCard label={text.students} value={students} />
         <ScoreCard label={text.teachers} value={teachers} />
@@ -83,7 +95,7 @@ export default async function AdminDashboard({ params }: { params: Promise<{ loc
           <School className="h-5 w-5 text-indigo-600" />
         </CardHeader>
         <CardContent className="space-y-3">
-          {auditLogs.map((log) => (
+          {auditLogs.map((log: RecentAuditLog) => (
             <div key={log.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3">
               <div className="min-w-0">
                 <p className="truncate font-bold">{log.action}</p>

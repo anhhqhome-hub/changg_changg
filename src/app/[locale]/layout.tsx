@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import { notFound } from "next/navigation";
 import { Toaster } from "sonner";
@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   icons: {
     icon: "/brand/logo-mark.svg"
   }
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1
 };
 
 export default async function LocaleLayout({

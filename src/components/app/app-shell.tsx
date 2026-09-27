@@ -10,6 +10,7 @@ import type { LucideIcon } from "lucide-react";
 
 type NavKey = "dashboard" | "workspace" | "users" | "schools" | "academicYears" | "classes" | "data" | "audit" | "questions" | "exams" | "grading" | "students" | "reports" | "settings";
 type NavItem = [key: NavKey, href: string, icon: LucideIcon];
+type NotificationRow = { id: string; title: string; body: string | null; href: string | null; readAt: Date | null; createdAt: Date };
 
 const nav: Record<AppUser["role"], NavItem[]> = {
   ADMIN: [
@@ -102,7 +103,7 @@ export async function AppShell({
           <div className="flex items-center gap-2">
             <NotificationBell
               locale={locale}
-              notifications={notifications.map((item) => ({
+              notifications={(notifications as NotificationRow[]).map((item: NotificationRow) => ({
                 ...item,
                 createdAt: item.createdAt.toISOString(),
                 readAt: item.readAt?.toISOString() ?? null
@@ -145,7 +146,7 @@ export async function AppShell({
           <Link
             key={href}
             href={`/${locale}/${rolePath}${href}`}
-            className="flex min-w-[76px] flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-bold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
           >
             <Icon className="h-5 w-5" aria-hidden />
             <span className="truncate">{t[key]}</span>

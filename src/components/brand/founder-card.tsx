@@ -4,7 +4,7 @@ import type { FounderInfo } from "@/lib/site-settings";
 
 export function FounderCard({ founder }: { founder: FounderInfo }) {
   return (
-    <div className="relative mb-6 overflow-hidden rounded-2xl border border-white/70 bg-gradient-to-br from-indigo-50 via-white to-amber-50 p-5 shadow-md shadow-indigo-100/60 backdrop-blur">
+    <div className="relative mb-6 min-w-0 overflow-hidden rounded-2xl border border-white/70 bg-gradient-to-br from-indigo-50 via-white to-amber-50 p-5 shadow-md shadow-indigo-100/60 backdrop-blur">
       <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-indigo-200/30 blur-2xl" />
       <div className="relative flex items-center gap-4">
         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full ring-4 ring-white shadow-lg shadow-indigo-200/50">

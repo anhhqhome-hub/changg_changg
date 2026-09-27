@@ -2,6 +2,8 @@ import Link from "next/link";
 import { BookOpen, CalendarClock, CheckCircle2, ClipboardCheck, FileUp, FolderOpen, Library, Sparkles, Users } from "lucide-react";
 import { createTeacherTaskAction, toggleTeacherTaskAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
+import { FirstLoginGuide } from "@/components/app/first-login-guide";
+import { LearningTools } from "@/components/app/learning-tools";
 import { StatusBadge } from "@/components/app/status-badge";
 import { AiExamModal } from "@/components/teacher/ai-generation-modals";
 import { Button } from "@/components/ui/button";
@@ -81,8 +83,28 @@ const copy = {
   }
 };
 
-export default async function TeacherDashboard({ params }: { params: Promise<{ locale: string }> }) {
+type TeacherTaskRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: string;
+  completedAt: Date | null;
+  dueAt: Date | null;
+};
+type QuestionStatRow = { skill: string; _count: { _all: number } };
+type RecentAttemptRow = { id: string; student: { name: string }; version: { title: string }; status: string };
+type AssignmentRow = { id: string; version: { title: string; deadline: Date | null }; class: { name: string } | null };
+type RecentExamRow = {
+  id: string;
+  title: string;
+  updatedAt: Date;
+  versions: Array<{ status: string }>;
+  _count: { assignments: number };
+};
+
+export default async function TeacherDashboard({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ welcome?: string }> }) {
   const { locale } = await params;
+  const { welcome } = await searchParams;
   const teacher = await requireRole("TEACHER", locale);
   const t = copy[locale === "en" ? "en" : "vi"];
   const [classes, students, activeExams, grading, recentAttempts, tasks, exams, questionStats, upcomingAssignments] =
@@ -123,8 +145,8 @@ export default async function TeacherDashboard({ params }: { params: Promise<{ l
         take: 3
       })
     ]);
-  const openTasks = tasks.filter((task) => !task.completedAt).length;
-  const totalQuestions = questionStats.reduce((sum, row) => sum + row._count._all, 0);
+  const openTasks = (tasks as TeacherTaskRow[]).filter((task) => !task.completedAt).length;
+  const totalQuestions = (questionStats as QuestionStatRow[]).reduce((sum, row) => sum + row._count._all, 0);
 
   return (
     <div className="space-y-4">
@@ -156,6 +178,10 @@ export default async function TeacherDashboard({ params }: { params: Promise<{ l
         </div>
       </section>
 
+      {welcome === "1" ? <FirstLoginGuide locale={locale} role="teacher" /> : null}
+
+      <LearningTools locale={locale} role="teacher" />
+
       <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <Card className="overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between gap-3">
@@ -186,7 +212,7 @@ export default async function TeacherDashboard({ params }: { params: Promise<{ l
             </div>
             <div className="flex flex-wrap gap-2 rounded-xl bg-slate-50 p-3">
               {questionStats.length ? (
-                questionStats.map((row) => (
+                (questionStats as QuestionStatRow[]).map((row) => (
                   <span key={row.skill} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-sm">
                     <SkillBadge skill={row.skill} />
                     {row._count._all}
@@ -207,7 +233,7 @@ export default async function TeacherDashboard({ params }: { params: Promise<{ l
           </CardHeader>
           <CardContent className="space-y-2">
             {recentAttempts.length ? (
-              recentAttempts.map((attempt) => (
+              (recentAttempts as RecentAttemptRow[]).map((attempt) => (
                 <div key={attempt.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">{attempt.student.name}</p>
@@ -228,7 +254,7 @@ export default async function TeacherDashboard({ params }: { params: Promise<{ l
           </CardHeader>
           <CardContent className="space-y-2">
             {upcomingAssignments.length ? (
-              upcomingAssignments.map((assignment) => (
+              (upcomingAssignments as AssignmentRow[]).map((assignment) => (
                 <div key={assignment.id} className="flex gap-3 rounded-xl bg-slate-50 p-3">
                   <CalendarClock className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" />
                   <div className="min-w-0">
@@ -248,7 +274,7 @@ export default async function TeacherDashboard({ params }: { params: Promise<{ l
             <CardTitle>{t.recentExams}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {exams.map((exam) => {
+            {(exams as RecentExamRow[]).map((exam) => {
               const version = exam.versions[0];
               return (
                 <Link key={exam.id} href={`/${locale}/teacher/exams/${exam.id}/builder`} className="block rounded-xl border border-slate-200 bg-white p-3 hover:border-indigo-300">
@@ -275,7 +301,7 @@ function TaskModal({
 }: {
   locale: string;
   t: (typeof copy)["vi"];
-  tasks: Awaited<ReturnType<typeof prisma.teacherTask.findMany>>;
+  tasks: TeacherTaskRow[];
   openTasks: number;
 }) {
   return (
@@ -305,7 +331,7 @@ function TaskModal({
 
         <div className="space-y-2">
           {tasks.length ? (
-            tasks.map((task) => (
+            tasks.map((task: TeacherTaskRow) => (
               <div key={task.id} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
                 <form action={toggleTeacherTaskAction}>
                   <input type="hidden" name="locale" value={locale} />

@@ -139,12 +139,13 @@ export async function signInAction(_state: LoginActionState, formData: FormData)
   });
   if (!user) return { error: "Không thể đọc thông tin tài khoản. Vui lòng thử lại." };
 
+  const isFirstLogin = !user.lastLoginAt;
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => undefined);
   const locale = user.preferredLocale || "vi";
   if (user.status === "PENDING") redirect(`/${locale}/pending`);
   if (user.status === "REJECTED") redirect(`/${locale}/rejected`);
   if (user.status === "SUSPENDED") redirect(`/${locale}/suspended`);
-  redirect(`/${locale}/${user.role.toLocaleLowerCase()}`);
+  redirect(`/${locale}/${user.role.toLocaleLowerCase()}${isFirstLogin ? "?welcome=1" : ""}`);
 }
 
 export async function signOutAction(locale: string) {

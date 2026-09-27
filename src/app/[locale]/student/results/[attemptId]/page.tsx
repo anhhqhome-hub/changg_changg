@@ -28,7 +28,9 @@ export default async function ResultPage({ params }: { params: Promise<{ locale:
               <p className="text-sm font-semibold text-indigo-800">Final score</p>
               <p className="text-3xl font-bold text-indigo-950">{attempt.finalScore} / {attempt.totalPoints}</p>
             </div>
-            {attempt.manualGrade?.comments ? <div className="rounded-md bg-slate-50 p-3">{attempt.manualGrade.comments}</div> : null}
+            {(attempt.manualGrade as { comments?: string | null } | null)?.comments ? (
+              <div className="rounded-md bg-slate-50 p-3">{(attempt.manualGrade as { comments?: string | null }).comments}</div>
+            ) : null}
             {attempt.version.showCorrectAnswersAfterSubmit ? (
               <div className="space-y-2">
                 {attempt.answers.map((answer) => (

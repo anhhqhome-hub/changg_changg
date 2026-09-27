@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BookOpenText, Lightbulb, PenLine, Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -18,8 +19,14 @@ export function AuthCard({
   beforeCard?: React.ReactNode;
 }) {
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md">
+    <main className="relative isolate flex min-h-screen w-full min-w-0 items-center justify-center overflow-hidden px-4 py-10">
+      <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
+        <div className="auth-stationery auth-stationery-book"><BookOpenText /></div>
+        <div className="auth-stationery auth-stationery-pen"><PenLine /></div>
+        <div className="auth-stationery auth-stationery-light"><Lightbulb /></div>
+        <div className="auth-stationery auth-stationery-spark"><Sparkles /></div>
+      </div>
+      <div className="w-full min-w-0 max-w-md">
         <BrandLogo className="mb-6 justify-center" />
         {beforeCard}
         <Card>
