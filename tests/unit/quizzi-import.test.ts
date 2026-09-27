@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQuizziWordText } from "@/lib/quizzi-import";
+import { parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
 
 describe("Quizzi Word parser", () => {
   it("parses normal A-D options and preserves underlined answer markers", () => {
@@ -39,5 +39,19 @@ Sample passage.
     expect(questions[0].prompt).toContain("Washington D.C.");
     expect(questions[0].options).toEqual(["one", "two", "three", "four"]);
     expect(questions[0].answer).toBe("D");
+  });
+
+  it("keeps Word underline markers when converting Mammoth HTML", () => {
+    const html = `
+      <p>[&lt;g&gt;] Choose the correct answer [&lt;/g&gt;]</p>
+      <p>(&lt;1&gt;) A. first <mark> B. second </mark> C. third D. fourth</p>
+      <p>[&lt;br&gt;]</p>
+    `;
+    const markedText = quizziHtmlToMarkedText(html);
+    const questions = parseQuizziWordText(markedText);
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
+    expect(questions[0].answer).toBe("B");
   });
 });

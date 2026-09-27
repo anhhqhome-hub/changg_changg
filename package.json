@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.20.0",
   "scripts": {
     "dev": "next dev",
-    "predev": "prisma db push && prisma generate",
+    "predev": "prisma generate",
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
     "start": "next start",
