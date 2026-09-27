@@ -95,7 +95,7 @@ export function ImportExamForm({ locale, action, text }: ImportExamFormProps) {
         ) : null}
       </label>
       <label className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm font-bold text-slate-800">
-        <input name="aiReview" type="checkbox" className="mt-1 h-4 w-4 accent-indigo-600" defaultChecked />
+        <input name="aiReview" type="checkbox" className="mt-1 h-4 w-4 accent-indigo-600" />
         <span className="flex-1">
           <span className="flex items-center gap-2">
             <Bot className="h-4 w-4 text-indigo-600" aria-hidden="true" /> {text.aiReview}

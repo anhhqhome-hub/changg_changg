@@ -1053,10 +1053,9 @@ async function parseExamImportFile(file: File) {
       }));
     }
 
-    const markedQuestions = parseWordQuestions(markedText);
-    if (markedQuestions.length > 0) return markedQuestions;
-    const rawResult = await mammoth.extractRawText({ buffer });
-    return parseWordQuestions(rawResult.value);
+    // The HTML conversion already contains all paragraph text. Reusing it
+    // avoids opening and parsing the DOCX archive a second time.
+    return parseWordQuestions(markedText);
   }
   throw new Error("IMPORT_UNSUPPORTED_FILE");
 }

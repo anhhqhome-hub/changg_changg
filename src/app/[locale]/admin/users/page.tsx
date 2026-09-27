@@ -56,8 +56,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
             </label>
             <label className="grid gap-1 text-sm font-bold">
               {isEn ? "Schools (select one or more for teachers)" : "Trường (giáo viên có thể chọn nhiều trường)"}
-              <select name="schoolIds" defaultValue={[]} multiple className="min-h-24 rounded-md border border-slate-300 bg-white px-3 text-sm">
-                <option value="">{isEn ? "No school / assign later" : "Chưa gán trường / gán sau"}</option>
+              <select name="schoolIds" defaultValue={[]} multiple size={4} className="min-h-24 rounded-md border border-slate-300 bg-white px-3 text-sm">
                 {schools.filter((school) => school.active).map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
               </select>
             </label>
@@ -120,8 +119,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
                             </label>
                             <label className="grid gap-1 text-sm font-bold">
                               {isEn ? "Schools" : "Các trường được gán"}
-                              <select name="schoolIds" defaultValue={user.teacherProfile?.schools.map((assignment) => assignment.schoolId) ?? (schoolId ? [schoolId] : [])} multiple className="min-h-24 rounded-md border border-slate-300 bg-white px-3 text-sm">
-                                <option value="">{isEn ? "No school" : "Chưa gán trường"}</option>
+                              <select name="schoolIds" defaultValue={user.teacherProfile?.schools.length ? user.teacherProfile.schools.map((assignment) => assignment.schoolId) : (schoolId ? [schoolId] : [])} multiple size={4} className="min-h-24 rounded-md border border-slate-300 bg-white px-3 text-sm">
                                 {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
                               </select>
                             </label>
