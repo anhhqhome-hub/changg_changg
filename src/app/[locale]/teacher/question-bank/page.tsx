@@ -125,7 +125,6 @@ export default async function QuestionBankPage({ params }: { params: Promise<{ l
                       <div key={option.id} className={`flex gap-2 text-sm ${option.isCorrect ? "font-black text-emerald-700" : "text-slate-700"}`}>
                         <span>{String.fromCharCode(65 + optionIndex)}.</span>
                         <span>{option.label}</span>
-                        {option.isCorrect ? <span className="text-xs uppercase">{isEn ? "correct" : "đúng"}</span> : null}
                       </div>
                     )) : <span className="text-sm text-slate-500">{isEn ? "No options" : "Không có lựa chọn"}</span>}
                   </div>
