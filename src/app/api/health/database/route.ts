@@ -19,6 +19,8 @@ export async function GET() {
       ok: true,
       databaseMode: connection.mode,
       ephemeral: connection.ephemeral,
+      persistent: !connection.ephemeral,
+      productionWriteReady: !connection.ephemeral,
       hasSeedUser: Boolean(user?.id),
       durationMs: Date.now() - startedAt
     });
@@ -29,6 +31,8 @@ export async function GET() {
         ok: false,
         databaseMode: connection.mode,
         ephemeral: connection.ephemeral,
+        persistent: !connection.ephemeral,
+        productionWriteReady: !connection.ephemeral,
         error: error instanceof Error ? error.message : "Unknown database error",
         durationMs: Date.now() - startedAt
       },

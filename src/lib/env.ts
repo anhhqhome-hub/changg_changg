@@ -3,6 +3,8 @@ import { z } from "zod";
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1).default("file:./prisma/dev.db"),
   DATABASE_AUTH_TOKEN: z.string().optional(),
+  TURSO_DATABASE_URL: z.string().optional(),
+  TURSO_AUTH_TOKEN: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().min(32).default("dev-secret-change-me-32-characters"),
   BETTER_AUTH_URL: z.string().url().default("http://localhost:3000"),
   UPLOAD_DIR: z.string().default("./storage/uploads"),
@@ -36,8 +38,10 @@ const shouldUseVercelUploadDir =
 
 export const env = {
   ...parsed,
-  DATABASE_URL: parsed.DATABASE_URL,
-  DATABASE_AUTH_TOKEN: parsed.DATABASE_AUTH_TOKEN,
+  // Turso aliases are supported because Vercel projects commonly keep their
+  // database credentials under TURSO_* environment variable names.
+  DATABASE_URL: parsed.TURSO_DATABASE_URL?.trim() || parsed.DATABASE_URL,
+  DATABASE_AUTH_TOKEN: parsed.TURSO_AUTH_TOKEN?.trim() || parsed.DATABASE_AUTH_TOKEN,
   BETTER_AUTH_URL: shouldUseVercelAuthUrl ? vercelBaseUrl() ?? parsed.BETTER_AUTH_URL : parsed.BETTER_AUTH_URL,
   UPLOAD_DIR: shouldUseVercelUploadDir ? "/tmp/changg-changg/uploads" : parsed.UPLOAD_DIR
 };
