@@ -2,6 +2,7 @@
 
 import { AudioRecorder } from "@/components/exam/audio-recorder";
 import { Textarea } from "@/components/ui/textarea";
+import { RichText } from "@/components/ui/rich-text";
 
 export type RunnerQuestion = {
   id: string;
@@ -93,7 +94,7 @@ export function QuestionRenderer({
           return (
             <div key={id} className="flex items-center gap-2 rounded-md border border-slate-200 bg-white p-2">
               <span className="w-8 text-center font-bold">{index + 1}</span>
-              <span className="flex-1">{option?.label ?? id}</span>
+              <RichText value={option?.label ?? id} className="flex-1" />
               <button type="button" className="px-2 text-sm font-semibold" onClick={() => move(order, index, -1, (next) => onChange({ ...answer, orderingAnswers: next }))}>
                 Up
               </button>
@@ -124,7 +125,7 @@ export function QuestionRenderer({
               onChange({ ...answer, selectedOptionIds: next });
             }}
           />
-          <span>{option.label}</span>
+          <RichText value={option.label} />
         </label>
       ))}
     </div>

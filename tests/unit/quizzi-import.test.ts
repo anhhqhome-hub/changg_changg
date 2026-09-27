@@ -51,7 +51,7 @@ Sample passage.
     const questions = parseQuizziWordText(markedText);
 
     expect(questions).toHaveLength(1);
-    expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
+    expect(questions[0].options).toEqual(["first", "**second**", "third", "fourth"]);
     expect(questions[0].answer).toBe("B");
   });
 
@@ -64,7 +64,7 @@ Sample passage.
     const markedText = quizziHtmlToMarkedText(html);
     const questions = parseQuizziWordText(markedText);
 
-    expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
+    expect(questions[0].options).toEqual(["first", "**second**", "third", "fourth"]);
     expect(questions[0].answer).toBe("B");
   });
 

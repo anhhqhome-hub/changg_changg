@@ -22,6 +22,8 @@ const numberedQuestion = /^\s*\(\[?<([0-9]+)>\]?\)([\s\S]*)$/i;
 const namedQuestion = /^\s*Question\s+([0-9]+)[\.:]\s*([\s\S]*)$/i;
 type OptionMarker = { label: "A" | "B" | "C" | "D"; start: number; contentStart: number };
 const correctMarker = "[[QUIZZI_CORRECT]]";
+const boldStartMarker = "[[QUIZZI_BOLD_START]]";
+const boldEndMarker = "[[QUIZZI_BOLD_END]]";
 
 export function parseQuizziWordText(text: string): QuizziParsedQuestion[] {
   if (!looksLikeQuizzi(text)) return [];
@@ -30,7 +32,7 @@ export function parseQuizziWordText(text: string): QuizziParsedQuestion[] {
   // in a separate run. Move our marker after the punctuation so option detection
   // remains stable: `A [[correct]]. foo` -> `A. [[correct]] foo`.
   const normalizedText = text.replace(
-    /([A-D])\s*\[\[QUIZZI_CORRECT\]\]\s*([\.)])/g,
+    new RegExp(`([A-D])\\s*(?:${escapeRegExp(boldEndMarker)})?\\s*${escapeRegExp(correctMarker)}\\s*([\\.)])`, "g"),
     `$1$2 ${correctMarker}`
   );
 
@@ -101,10 +103,11 @@ function looksLikeQuizzi(text: string) {
 }
 
 function getQuestionStart(line: string): QuestionStart | null {
-  const named = line.match(namedQuestion);
+  const structuralLine = removeFormattingMarkers(line);
+  const named = structuralLine.match(namedQuestion);
   if (named) return { number: named[1], rest: named[2].trim() };
 
-  const numbered = line.match(numberedQuestion);
+  const numbered = structuralLine.match(numberedQuestion);
   if (!numbered) return null;
 
   const rest = numbered[2].trim();
@@ -114,9 +117,9 @@ function getQuestionStart(line: string): QuestionStart | null {
 }
 
 function stripQuestionMarker(text: string) {
-  const named = text.match(namedQuestion);
+  const named = text.match(new RegExp(`^\\s*(?:${escapeRegExp(boldStartMarker)})?Question\\s+([0-9]+)[\\.:]\\s*(?:${escapeRegExp(boldEndMarker)})?([\\s\\S]*)$`, "i"));
   if (named) return named[2].trim();
-  const numbered = text.match(numberedQuestion);
+  const numbered = text.match(new RegExp(`^\\s*(?:${escapeRegExp(boldStartMarker)})?\\(\\[?<([0-9]+)>\\]?\\)(?:${escapeRegExp(boldEndMarker)})?([\\s\\S]*)$`, "i"));
   if (numbered) return numbered[2].trim();
   return text.trim();
 }
@@ -164,11 +167,14 @@ function findOrderedOptionMarkers(text: string): OptionMarker[] {
   // sequence. Requiring the sequence avoids false positives such as the `C.` in
   // `Washington D.C.`.
   const candidates: OptionMarker[] = [];
+  const structuralText = removeFormattingMarkers(text);
   const pattern = /([A-D])\s*[\.)]\s*/g;
-  for (const match of text.matchAll(pattern)) {
+  for (const match of structuralText.matchAll(pattern)) {
     const label = match[1] as OptionMarker["label"];
-    const start = match.index ?? 0;
-    candidates.push({ label, start, contentStart: start + match[0].length });
+    const structuralStart = match.index ?? 0;
+    const start = mapStructuralIndex(text, structuralStart);
+    const contentStart = mapStructuralIndex(text, structuralStart + match[0].length);
+    candidates.push({ label, start, contentStart });
   }
 
   let best: OptionMarker[] = [];
@@ -190,8 +196,29 @@ function findOrderedOptionMarkers(text: string): OptionMarker[] {
   return best.length >= 2 ? best : [];
 }
 
+function removeFormattingMarkers(value: string) {
+  return value.replaceAll(boldStartMarker, "").replaceAll(boldEndMarker, "");
+}
+
+function mapStructuralIndex(original: string, structuralIndex: number) {
+  let originalIndex = 0;
+  let visibleIndex = 0;
+  while (originalIndex < original.length && visibleIndex < structuralIndex) {
+    if (original.startsWith(boldStartMarker, originalIndex)) originalIndex += boldStartMarker.length;
+    else if (original.startsWith(boldEndMarker, originalIndex)) originalIndex += boldEndMarker.length;
+    else {
+      originalIndex += 1;
+      visibleIndex += 1;
+    }
+  }
+  while (original.startsWith(boldStartMarker, originalIndex) || original.startsWith(boldEndMarker, originalIndex)) {
+    originalIndex += original.startsWith(boldStartMarker, originalIndex) ? boldStartMarker.length : boldEndMarker.length;
+  }
+  return originalIndex;
+}
+
 export function cleanQuizziMarkup(value: string) {
-  return value
+  let cleaned = value
     .replace(groupTag, "")
     .replace(/\{\s*<(\d+)>\s*\}/g, "$1")
     .replace(/\(\[<(\d+)>\]\)/g, "($1)")
@@ -201,6 +228,20 @@ export function cleanQuizziMarkup(value: string) {
     .replace(/[ \t]+/g, " ")
     .replace(/\n[ \t]+/g, "\n")
     .trim();
+  cleaned = cleaned.replace(new RegExp(`${escapeRegExp(boldStartMarker)}([\\s\\S]*?)${escapeRegExp(boldEndMarker)}`, "g"), "**$1**");
+  if (cleaned.includes(boldStartMarker) || cleaned.includes(boldEndMarker)) {
+    if (cleaned.includes(boldEndMarker) && !cleaned.includes(boldStartMarker)) {
+      const content = cleaned.replaceAll(boldEndMarker, "").trim();
+      cleaned = content ? `**${content}**` : "";
+    } else {
+      cleaned = cleaned.replaceAll(boldStartMarker, "").replaceAll(boldEndMarker, "");
+    }
+  }
+  return cleaned.replace(/\*\*\s*\*\*/g, "").trim();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function looksLikeDocumentHeading(line: string) {
@@ -225,7 +266,7 @@ function looksLikePassageTitle(line: string) {
 export function quizziHtmlToMarkedText(html: string) {
   const withCorrectMarkers = html
     .replace(/<(?:mark|strong|b)(?:\s[^>]*)?>([\s\S]*?)<\/(?:mark|strong|b)>/gi, (_match, inner: string) => {
-    return `${inner} ${correctMarker}`;
+    return `${boldStartMarker}${inner}${boldEndMarker} ${correctMarker}`;
     });
 
   return decodeBasicHtmlEntities(

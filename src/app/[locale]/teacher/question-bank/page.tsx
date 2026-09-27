@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
 import { QuestionEditorForm } from "@/components/teacher/question-editor-form";
+import { RichText } from "@/components/ui/rich-text";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 
@@ -119,7 +120,7 @@ export default async function QuestionBankPage({ params }: { params: Promise<{ l
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">{question.questionType}</span>
                   </div>
                   <h2 className="font-black text-slate-950">{question.title}</h2>
-                  <p className="mt-1 line-clamp-3 text-sm text-slate-600">{question.prompt}</p>
+            <RichText value={question.prompt} className="mt-1 line-clamp-3 text-sm text-slate-600" />
                   <div className="mt-3 grid gap-1 rounded-lg border border-slate-100 bg-slate-50 p-3">
                     {question.options.length ? question.options.map((option, optionIndex) => (
                       <div key={option.id} className={`flex gap-2 text-sm ${option.isCorrect ? "font-black text-emerald-700" : "text-slate-700"}`}>

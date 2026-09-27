@@ -1031,7 +1031,7 @@ async function parseExamImportFile(file: File) {
     // Mammoth does not keep those marks in raw text, so map both to <mark> first.
     const htmlResult = await mammoth.convertToHtml(
       { buffer },
-      { styleMap: ["u => mark", "b => mark", "strong => mark"] }
+      { styleMap: ["u => mark", "b => mark"] }
     );
     const markedText = quizziHtmlToMarkedText(htmlResult.value);
     const quizziQuestions = parseQuizziWordText(markedText);

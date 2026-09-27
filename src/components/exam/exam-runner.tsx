@@ -8,6 +8,7 @@ import { QuestionNavigator } from "@/components/exam/question-navigator";
 import { QuestionRenderer, type RunnerAnswer, type RunnerQuestion } from "@/components/exam/question-renderer";
 import { SaveIndicator } from "@/components/exam/save-indicator";
 import { Button } from "@/components/ui/button";
+import { RichText } from "@/components/ui/rich-text";
 
 export type RunnerSection = {
   id: string;
@@ -130,18 +131,18 @@ export function ExamRunner({
           ) : null}
           {group?.readingPassage ? (
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-bold">{group.readingPassage.title}</h2>
-              {group.readingPassage.instructions ? <p className="mt-1 text-sm text-slate-600">{group.readingPassage.instructions}</p> : null}
-              <p className="mt-4 whitespace-pre-wrap leading-7 text-slate-800">{group.readingPassage.body}</p>
+              <RichText value={group.readingPassage.title} className="block text-lg font-bold" />
+              {group.readingPassage.instructions ? <RichText value={group.readingPassage.instructions} className="mt-1 block text-sm text-slate-600" /> : null}
+              <RichText value={group.readingPassage.body} className="mt-4 block leading-7 text-slate-800" />
             </article>
           ) : null}
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-indigo-700">Question {current + 1} of {questions.length}</p>
-                <h2 className="text-xl font-bold text-slate-950">{currentQuestion.title}</h2>
-                <p className="mt-2 whitespace-pre-wrap text-slate-800">{currentQuestion.prompt}</p>
-                {currentQuestion.instructions ? <p className="mt-2 text-sm text-slate-600">{currentQuestion.instructions}</p> : null}
+                <RichText value={currentQuestion.title} className="block text-xl font-bold text-slate-950" />
+                <RichText value={currentQuestion.prompt} className="mt-2 block text-slate-800" />
+                {currentQuestion.instructions ? <RichText value={currentQuestion.instructions} className="mt-2 block text-sm text-slate-600" /> : null}
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => update({ ...(answers[currentQuestion.id] ?? {}), isFlagged: !answers[currentQuestion.id]?.isFlagged })}>
                 <Flag className="h-4 w-4" /> Flag
