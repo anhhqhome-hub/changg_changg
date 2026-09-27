@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AssignExamModal } from "@/components/teacher/assign-exam-modal";
 import { QuestionEditorForm } from "@/components/teacher/question-editor-form";
+import { QuestionSlideNavigator } from "@/components/teacher/question-slide-navigator";
+import { Modal } from "@/components/ui/modal";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import type { Skill } from "@/generated/prisma/enums";
@@ -140,31 +142,30 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                 <Library className="h-4 w-4" /> {text.backBank}
               </Link>
             </Button>
-            <form action={publishExamAction} className="flex flex-wrap items-end gap-2">
-              <input type="hidden" name="locale" value={locale} />
-              <input type="hidden" name="examId" value={exam.id} />
-              <label className="grid gap-1 text-[10px] font-black uppercase text-slate-500">
-                {isEn ? "Mode" : "Chế độ"}
-                <select name="mode" defaultValue={version.mode} className="h-10 rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-slate-900">
-                  <option value="TEST">{isEn ? "Test" : "Kiểm tra"}</option>
-                  <option value="PRACTICE">{isEn ? "Practice" : "Luyện tập"}</option>
-                </select>
-              </label>
-              <label className="grid gap-1 text-[10px] font-black uppercase text-slate-500">
-                {isEn ? "Attempts" : "Số lượt"}
-                <Input name="attemptsAllowed" type="number" min="1" max="20" defaultValue={version.attemptsAllowed} className="h-10 w-20 text-xs font-bold" />
-              </label>
-              <Button type="submit" disabled={version.status !== "DRAFT"}>
-                <CheckCircle2 className="h-4 w-4" /> {text.publish}
-              </Button>
-            </form>
+            <Modal title={isEn ? "Publish exam" : "Xuất bản đề"} description={isEn ? "Choose the mode and attempt limit before publishing." : "Chọn chế độ và số lượt trước khi xuất bản đề."} triggerLabel={text.publish} triggerIcon="plus" triggerVariant="default">
+              <form action={publishExamAction} className="grid gap-4">
+                <input type="hidden" name="locale" value={locale} />
+                <input type="hidden" name="examId" value={exam.id} />
+                <label className="grid gap-1 text-sm font-black">
+                  {isEn ? "Assessment mode" : "Chế độ bài"}
+                  <select name="mode" defaultValue={version.mode} className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm">
+                    <option value="TEST">{isEn ? "Test" : "Kiểm tra"}</option>
+                    <option value="PRACTICE">{isEn ? "Practice - unlimited retries" : "Luyện tập - không giới hạn lượt"}</option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-black">
+                  {isEn ? "Maximum test attempts" : "Số lượt tối đa khi kiểm tra"}
+                  <Input name="attemptsAllowed" type="number" min="1" max="20" defaultValue={version.attemptsAllowed} />
+                </label>
+                <Button type="submit" disabled={version.status !== "DRAFT"}><CheckCircle2 className="h-4 w-4" /> {isEn ? "Confirm publish" : "Xác nhận xuất bản"}</Button>
+              </form>
+            </Modal>
           </div>
         </div>
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
-        <div className="space-y-4">
-          {version.sections.map((section) => {
+        <QuestionSlideNavigator previousLabel={isEn ? "Previous section" : "Phần trước"} nextLabel={isEn ? "Next section" : "Phần tiếp"} labels={version.sections.map((section, index) => `${isEn ? "Section" : "Phần"} ${index + 1}: ${section.title}`)} slides={version.sections.map((section) => {
             const sectionQuestions = section.groups.flatMap((group) => group.questions);
             const available = bankBySkill[section.skill];
             return (
@@ -267,8 +268,7 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                 </CardContent>
               </Card>
             );
-          })}
-        </div>
+          })} />
 
         <aside className="space-y-4 xl:sticky xl:top-20 xl:self-start">
           <Card>
