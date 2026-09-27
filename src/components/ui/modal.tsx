@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import { Bell, Bot, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,12 @@ const triggerIcons = {
   plus: Plus,
   bot: Bot
 };
+
+const ModalCloseContext = createContext<(() => void) | null>(null);
+
+export function useModalClose() {
+  return useContext(ModalCloseContext);
+}
 
 export function Modal({
   triggerLabel,
@@ -58,7 +64,9 @@ export function Modal({
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="max-h-[75vh] overflow-y-auto p-5">{children}</div>
+            <ModalCloseContext.Provider value={() => setIsOpen(false)}>
+              <div className="max-h-[75vh] overflow-y-auto p-5">{children}</div>
+            </ModalCloseContext.Provider>
           </section>
         </div>
       ) : null}

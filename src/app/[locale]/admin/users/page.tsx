@@ -1,6 +1,7 @@
 import { KeyRound, LogOut, Pencil, Trash2, UserPlus } from "lucide-react";
 import { createAccountAction, deleteAccountAction, resetUserPasswordAction, revokeUserSessionsAction, updateAccountAction } from "@/actions/admin-actions";
 import { StatusBadge } from "@/components/app/status-badge";
+import { ActionToast } from "@/components/app/action-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
         </div>
         <Modal title={isEn ? "Create account" : "Tạo tài khoản"} triggerLabel={isEn ? "New account" : "Tạo tài khoản"} triggerIcon="plus">
           <form action={createAccountAction} className="grid gap-3">
+            <ActionToast pendingMessage={isEn ? "Creating account..." : "Đang tạo tài khoản..."} successMessage={isEn ? "Account created." : "Đã tạo tài khoản."} />
             <input type="hidden" name="locale" value={locale} />
             <label className="grid gap-1 text-sm font-bold">
               {isEn ? "Full name" : "Họ tên"}
@@ -54,12 +56,17 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
                 {roles.map((role) => <option key={role} value={role}>{role}</option>)}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-bold">
-              {isEn ? "Schools (select one or more for teachers)" : "Trường (giáo viên có thể chọn nhiều trường)"}
-              <select name="schoolIds" defaultValue={[]} multiple size={4} className="min-h-24 rounded-md border border-slate-300 bg-white px-3 text-sm">
-                {schools.filter((school) => school.active).map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
-              </select>
-            </label>
+            <fieldset className="grid gap-2 text-sm font-bold">
+              <legend>{isEn ? "Schools (select one or more for teachers)" : "Trường (giáo viên có thể chọn nhiều trường)"}</legend>
+              <div className="grid max-h-32 gap-1 overflow-y-auto rounded-md border border-slate-300 bg-white p-2">
+                {schools.filter((school) => school.active).map((school) => (
+                  <label key={school.id} className="flex items-center gap-2 rounded px-2 py-1 font-medium hover:bg-indigo-50">
+                    <input name="schoolIds" value={school.id} type="checkbox" className="h-4 w-4 accent-indigo-600" />
+                    <span>{school.name}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <label className="grid gap-1 text-sm font-bold">
               {isEn ? "Grade (students only)" : "Khối (chỉ học sinh)"}
               <Input name="gradeLevel" placeholder={isEn ? "Grade 9" : "Khối 9"} />
@@ -101,6 +108,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
                       <div className="flex flex-wrap justify-end gap-2">
                         <Modal title={isEn ? `Edit · ${user.name}` : `Sửa · ${user.name}`} triggerLabel={isEn ? "Edit" : "Sửa"} triggerVariant="outline">
                           <form action={updateAccountAction} className="grid gap-3 text-left">
+                            <ActionToast pendingMessage={isEn ? "Saving changes..." : "Đang lưu thay đổi..."} successMessage={isEn ? "Account updated." : "Đã cập nhật tài khoản."} />
                             <input type="hidden" name="locale" value={locale} />
                             <input type="hidden" name="userId" value={user.id} />
                             <label className="grid gap-1 text-sm font-bold">{isEn ? "Full name" : "Họ tên"}<Input name="name" defaultValue={user.name} required /></label>
@@ -117,18 +125,29 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
                                 {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
                               </select>
                             </label>
-                            <label className="grid gap-1 text-sm font-bold">
-                              {isEn ? "Schools" : "Các trường được gán"}
-                              <select name="schoolIds" defaultValue={user.teacherProfile?.schools.length ? user.teacherProfile.schools.map((assignment) => assignment.schoolId) : (schoolId ? [schoolId] : [])} multiple size={4} className="min-h-24 rounded-md border border-slate-300 bg-white px-3 text-sm">
-                                {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
-                              </select>
-                            </label>
+                            <fieldset className="grid gap-2 text-sm font-bold">
+                              <legend>{isEn ? "Schools" : "Các trường được gán"}</legend>
+                              <div className="grid max-h-32 gap-1 overflow-y-auto rounded-md border border-slate-300 bg-white p-2">
+                                {schools.map((school) => {
+                                  const selectedSchoolIds = user.teacherProfile?.schools.length
+                                    ? user.teacherProfile.schools.map((assignment) => assignment.schoolId)
+                                    : (schoolId ? [schoolId] : []);
+                                  return (
+                                    <label key={school.id} className="flex items-center gap-2 rounded px-2 py-1 font-medium hover:bg-indigo-50">
+                                      <input name="schoolIds" value={school.id} type="checkbox" defaultChecked={selectedSchoolIds.includes(school.id)} className="h-4 w-4 accent-indigo-600" />
+                                      <span>{school.name}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </fieldset>
                             <label className="grid gap-1 text-sm font-bold">{isEn ? "Grade" : "Khối"}<Input name="gradeLevel" defaultValue={user.studentProfile?.gradeLevel ?? ""} /></label>
                             <Button type="submit"><Pencil className="h-4 w-4" />{isEn ? "Save changes" : "Lưu thay đổi"}</Button>
                           </form>
                         </Modal>
 
                         <form action={revokeUserSessionsAction}>
+                          <ActionToast pendingMessage={isEn ? "Signing out sessions..." : "Đang đăng xuất các phiên..."} successMessage={isEn ? "Sessions signed out." : "Đã đăng xuất các phiên."} />
                           <input type="hidden" name="locale" value={locale} />
                           <input type="hidden" name="userId" value={user.id} />
                           <Button type="submit" variant="outline" size="sm" title={isEn ? "Sign out this account from all devices" : "Đăng xuất tài khoản này khỏi mọi thiết bị"}>
@@ -138,6 +157,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
 
                         <Modal title={isEn ? `Reset password · ${user.name}` : `Đặt lại mật khẩu · ${user.name}`} triggerLabel={isEn ? "Password" : "Mật khẩu"} triggerVariant="outline">
                           <form action={resetUserPasswordAction} className="grid gap-3 text-left">
+                            <ActionToast pendingMessage={isEn ? "Resetting password..." : "Đang đặt lại mật khẩu..."} successMessage={isEn ? "Password reset." : "Đã đặt lại mật khẩu."} />
                             <input type="hidden" name="locale" value={locale} />
                             <input type="hidden" name="userId" value={user.id} />
                             <p className="text-sm text-slate-600">@{user.username ?? "—"} · {user.role}</p>
@@ -156,6 +176,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
                           triggerVariant="outline"
                         >
                           <form action={deleteAccountAction} className="grid gap-4 text-left">
+                            <ActionToast pendingMessage={isEn ? "Deleting account..." : "Đang xóa tài khoản..."} successMessage={isEn ? "Account deleted." : "Đã xóa tài khoản."} />
                             <input type="hidden" name="locale" value={locale} />
                             <input type="hidden" name="userId" value={user.id} />
                             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
