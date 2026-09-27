@@ -67,4 +67,18 @@ Sample passage.
     expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
     expect(questions[0].answer).toBe("B");
   });
+
+  it("creates a prompt when the Word marker is the only text before options", () => {
+    const text = `
+      [<g>] Read and choose [</g>]
+      Short passage with a blank.
+      (<1>) [[QUIZZI_CORRECT]] A. first B. second C. third D. fourth
+      [<br>]
+    `;
+    const questions = parseQuizziWordText(text);
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].prompt).toBe("Chọn đáp án đúng cho câu (1).");
+    expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
+  });
 });

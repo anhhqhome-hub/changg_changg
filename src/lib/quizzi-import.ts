@@ -142,12 +142,15 @@ function parseQuestionBlock(block: string[], number: string, hasPassage: boolean
     if (option.includes(correctMarker)) answer = String.fromCharCode(65 + index);
     return cleanQuizziMarkup(option).trim();
   }).filter(Boolean);
+  prompt = cleanQuizziMarkup(prompt);
+  // Some Word files mark the blank itself as bold/underlined. After the
+  // formatting marker is removed, the text before the options can be empty.
+  // Treat that the same as a normal cloze question and provide a usable prompt.
   if (!prompt) {
     prompt = hasPassage
       ? `Chọn đáp án đúng cho câu (${number}).`
       : `Chọn đáp án đúng cho câu ${number}.`;
   }
-  prompt = cleanQuizziMarkup(prompt);
   if (!prompt && cleanedOptions.length === 0) return null;
 
   return { prompt, options: cleanedOptions, answer };
