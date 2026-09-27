@@ -404,6 +404,7 @@ export const ModelName = {
   StudentProfile: 'StudentProfile',
   School: 'School',
   TeacherProfile: 'TeacherProfile',
+  AcademicYear: 'AcademicYear',
   Class: 'Class',
   ClassMembership: 'ClassMembership',
   MediaAsset: 'MediaAsset',
@@ -442,7 +443,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "account" | "verification" | "studentProfile" | "school" | "teacherProfile" | "class" | "classMembership" | "mediaAsset" | "readingPassage" | "questionBankItem" | "questionBankOption" | "rubric" | "rubricCriterion" | "exam" | "examVersion" | "examSection" | "questionGroup" | "examQuestion" | "examQuestionOption" | "examAssignment" | "examAttempt" | "attemptAnswer" | "manualGrade" | "criterionGrade" | "notification" | "teacherTask" | "auditLog" | "siteSetting"
+    modelProps: "user" | "session" | "account" | "verification" | "studentProfile" | "school" | "teacherProfile" | "academicYear" | "class" | "classMembership" | "mediaAsset" | "readingPassage" | "questionBankItem" | "questionBankOption" | "rubric" | "rubricCriterion" | "exam" | "examVersion" | "examSection" | "questionGroup" | "examQuestion" | "examQuestionOption" | "examAssignment" | "examAttempt" | "attemptAnswer" | "manualGrade" | "criterionGrade" | "notification" | "teacherTask" | "auditLog" | "siteSetting"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -961,6 +962,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.TeacherProfileCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.TeacherProfileCountAggregateOutputType> | number
+        }
+      }
+    }
+    AcademicYear: {
+      payload: Prisma.$AcademicYearPayload<ExtArgs>
+      fields: Prisma.AcademicYearFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AcademicYearFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AcademicYearFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>
+        }
+        findFirst: {
+          args: Prisma.AcademicYearFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AcademicYearFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>
+        }
+        findMany: {
+          args: Prisma.AcademicYearFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>[]
+        }
+        create: {
+          args: Prisma.AcademicYearCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>
+        }
+        createMany: {
+          args: Prisma.AcademicYearCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AcademicYearCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>[]
+        }
+        delete: {
+          args: Prisma.AcademicYearDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>
+        }
+        update: {
+          args: Prisma.AcademicYearUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>
+        }
+        deleteMany: {
+          args: Prisma.AcademicYearDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AcademicYearUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AcademicYearUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>[]
+        }
+        upsert: {
+          args: Prisma.AcademicYearUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AcademicYearPayload>
+        }
+        aggregate: {
+          args: Prisma.AcademicYearAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAcademicYear>
+        }
+        groupBy: {
+          args: Prisma.AcademicYearGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AcademicYearGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AcademicYearCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AcademicYearCountAggregateOutputType> | number
         }
       }
     }
@@ -2707,6 +2782,8 @@ export const UserScalarFieldEnum = {
   name: 'name',
   email: 'email',
   emailVerified: 'emailVerified',
+  username: 'username',
+  displayUsername: 'displayUsername',
   image: 'image',
   role: 'role',
   status: 'status',
@@ -2799,6 +2876,7 @@ export type SchoolScalarFieldEnum = (typeof SchoolScalarFieldEnum)[keyof typeof 
 export const TeacherProfileScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
+  schoolId: 'schoolId',
   teacherCode: 'teacherCode',
   displayName: 'displayName',
   bio: 'bio',
@@ -2809,12 +2887,27 @@ export const TeacherProfileScalarFieldEnum = {
 export type TeacherProfileScalarFieldEnum = (typeof TeacherProfileScalarFieldEnum)[keyof typeof TeacherProfileScalarFieldEnum]
 
 
+export const AcademicYearScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  startDate: 'startDate',
+  endDate: 'endDate',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AcademicYearScalarFieldEnum = (typeof AcademicYearScalarFieldEnum)[keyof typeof AcademicYearScalarFieldEnum]
+
+
 export const ClassScalarFieldEnum = {
   id: 'id',
   name: 'name',
   description: 'description',
   archivedAt: 'archivedAt',
   teacherId: 'teacherId',
+  schoolId: 'schoolId',
+  academicYearId: 'academicYearId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2939,6 +3032,7 @@ export const ExamVersionScalarFieldEnum = {
   examId: 'examId',
   versionNumber: 'versionNumber',
   status: 'status',
+  mode: 'mode',
   title: 'title',
   description: 'description',
   instructions: 'instructions',
@@ -3026,6 +3120,7 @@ export const ExamAssignmentScalarFieldEnum = {
   targetType: 'targetType',
   classId: 'classId',
   studentId: 'studentId',
+  academicYearId: 'academicYearId',
   createdById: 'createdById',
   createdAt: 'createdAt'
 } as const
@@ -3258,6 +3353,13 @@ export type EnumExamLifecycleFieldRefInput<$PrismaModel> = FieldRefInputType<$Pr
 
 
 /**
+ * Reference to a field of type 'ExamMode'
+ */
+export type EnumExamModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ExamMode'>
+    
+
+
+/**
  * Reference to a field of type 'ResultsReleaseMode'
  */
 export type EnumResultsReleaseModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ResultsReleaseMode'>
@@ -3442,6 +3544,7 @@ export type GlobalOmitConfig = {
   studentProfile?: Prisma.StudentProfileOmit
   school?: Prisma.SchoolOmit
   teacherProfile?: Prisma.TeacherProfileOmit
+  academicYear?: Prisma.AcademicYearOmit
   class?: Prisma.ClassOmit
   classMembership?: Prisma.ClassMembershipOmit
   mediaAsset?: Prisma.MediaAssetOmit

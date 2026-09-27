@@ -317,6 +317,13 @@ export type EnumExamLifecycleFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumExamLifecycleFilter<$PrismaModel> | $Enums.ExamLifecycle
 }
 
+export type EnumExamModeFilter<$PrismaModel = never> = {
+  equals?: $Enums.ExamMode | Prisma.EnumExamModeFieldRefInput<$PrismaModel>
+  in?: $Enums.ExamMode[]
+  notIn?: $Enums.ExamMode[]
+  not?: Prisma.NestedEnumExamModeFilter<$PrismaModel> | $Enums.ExamMode
+}
+
 export type FloatNullableFilter<$PrismaModel = never> = {
   equals?: number | Prisma.FloatFieldRefInput<$PrismaModel> | null
   in?: number[] | null
@@ -343,6 +350,16 @@ export type EnumExamLifecycleWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumExamLifecycleFilter<$PrismaModel>
   _max?: Prisma.NestedEnumExamLifecycleFilter<$PrismaModel>
+}
+
+export type EnumExamModeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ExamMode | Prisma.EnumExamModeFieldRefInput<$PrismaModel>
+  in?: $Enums.ExamMode[]
+  notIn?: $Enums.ExamMode[]
+  not?: Prisma.NestedEnumExamModeWithAggregatesFilter<$PrismaModel> | $Enums.ExamMode
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumExamModeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumExamModeFilter<$PrismaModel>
 }
 
 export type FloatNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -731,6 +748,13 @@ export type NestedEnumExamLifecycleFilter<$PrismaModel = never> = {
   not?: Prisma.NestedEnumExamLifecycleFilter<$PrismaModel> | $Enums.ExamLifecycle
 }
 
+export type NestedEnumExamModeFilter<$PrismaModel = never> = {
+  equals?: $Enums.ExamMode | Prisma.EnumExamModeFieldRefInput<$PrismaModel>
+  in?: $Enums.ExamMode[]
+  notIn?: $Enums.ExamMode[]
+  not?: Prisma.NestedEnumExamModeFilter<$PrismaModel> | $Enums.ExamMode
+}
+
 export type NestedEnumResultsReleaseModeFilter<$PrismaModel = never> = {
   equals?: $Enums.ResultsReleaseMode | Prisma.EnumResultsReleaseModeFieldRefInput<$PrismaModel>
   in?: $Enums.ResultsReleaseMode[]
@@ -746,6 +770,16 @@ export type NestedEnumExamLifecycleWithAggregatesFilter<$PrismaModel = never> = 
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumExamLifecycleFilter<$PrismaModel>
   _max?: Prisma.NestedEnumExamLifecycleFilter<$PrismaModel>
+}
+
+export type NestedEnumExamModeWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.ExamMode | Prisma.EnumExamModeFieldRefInput<$PrismaModel>
+  in?: $Enums.ExamMode[]
+  notIn?: $Enums.ExamMode[]
+  not?: Prisma.NestedEnumExamModeWithAggregatesFilter<$PrismaModel> | $Enums.ExamMode
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumExamModeFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumExamModeFilter<$PrismaModel>
 }
 
 export type NestedFloatNullableWithAggregatesFilter<$PrismaModel = never> = {

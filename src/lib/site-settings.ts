@@ -8,8 +8,8 @@ export type FounderInfo = {
 };
 
 const DEFAULT_FOUNDER_PHOTO = "/brand/founder.jpg";
-const DEFAULT_FOUNDER_TITLE_VI = "Người sáng lập changg changg";
-const DEFAULT_FOUNDER_TITLE_EN = "Founder of changg changg";
+const DEFAULT_FOUNDER_TITLE_VI = "Người sáng lập The Folio";
+const DEFAULT_FOUNDER_TITLE_EN = "Founder of The Folio";
 
 export async function getSiteSettings() {
   try {

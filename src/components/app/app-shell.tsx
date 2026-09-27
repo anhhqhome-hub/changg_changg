@@ -96,7 +96,7 @@ export async function AppShell({
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 border-b border-white/70 bg-white/88 backdrop-blur-xl">
         <div className="flex w-full items-center justify-between gap-3 px-3 py-3 sm:px-5">
-          <Link href={`/${locale}/${rolePath}`} aria-label="changg changg home">
+          <Link href={`/${locale}/${rolePath}`} aria-label="The Folio home">
             <BrandLogo />
           </Link>
           <div className="flex items-center gap-2">

@@ -58,6 +58,7 @@ export const ModelName = {
   StudentProfile: 'StudentProfile',
   School: 'School',
   TeacherProfile: 'TeacherProfile',
+  AcademicYear: 'AcademicYear',
   Class: 'Class',
   ClassMembership: 'ClassMembership',
   MediaAsset: 'MediaAsset',
@@ -101,6 +102,8 @@ export const UserScalarFieldEnum = {
   name: 'name',
   email: 'email',
   emailVerified: 'emailVerified',
+  username: 'username',
+  displayUsername: 'displayUsername',
   image: 'image',
   role: 'role',
   status: 'status',
@@ -193,6 +196,7 @@ export type SchoolScalarFieldEnum = (typeof SchoolScalarFieldEnum)[keyof typeof 
 export const TeacherProfileScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
+  schoolId: 'schoolId',
   teacherCode: 'teacherCode',
   displayName: 'displayName',
   bio: 'bio',
@@ -203,12 +207,27 @@ export const TeacherProfileScalarFieldEnum = {
 export type TeacherProfileScalarFieldEnum = (typeof TeacherProfileScalarFieldEnum)[keyof typeof TeacherProfileScalarFieldEnum]
 
 
+export const AcademicYearScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  startDate: 'startDate',
+  endDate: 'endDate',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AcademicYearScalarFieldEnum = (typeof AcademicYearScalarFieldEnum)[keyof typeof AcademicYearScalarFieldEnum]
+
+
 export const ClassScalarFieldEnum = {
   id: 'id',
   name: 'name',
   description: 'description',
   archivedAt: 'archivedAt',
   teacherId: 'teacherId',
+  schoolId: 'schoolId',
+  academicYearId: 'academicYearId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -333,6 +352,7 @@ export const ExamVersionScalarFieldEnum = {
   examId: 'examId',
   versionNumber: 'versionNumber',
   status: 'status',
+  mode: 'mode',
   title: 'title',
   description: 'description',
   instructions: 'instructions',
@@ -420,6 +440,7 @@ export const ExamAssignmentScalarFieldEnum = {
   targetType: 'targetType',
   classId: 'classId',
   studentId: 'studentId',
+  academicYearId: 'academicYearId',
   createdById: 'createdById',
   createdAt: 'createdAt'
 } as const

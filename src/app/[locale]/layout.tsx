@@ -14,7 +14,7 @@ const beVietnam = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "changg changg",
+  title: "The Folio",
   description: "English teaching, examination, and analytics for Vietnamese classes.",
   icons: {
     icon: "/brand/logo-mark.svg"

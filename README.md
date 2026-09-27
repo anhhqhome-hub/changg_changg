@@ -1,6 +1,6 @@
-# changg changg
+# The Folio
 
-`changg changg` is a school learning and assessment MVP built with Next.js 16, Prisma 7, SQLite/libSQL and Better Auth.
+`The Folio` is a school learning and assessment MVP built with Next.js 16, Prisma 7, SQLite/libSQL and Better Auth.
 
 ## Business model
 

@@ -45,6 +45,7 @@ export type ExamVersionMinAggregateOutputType = {
   examId: string | null
   versionNumber: number | null
   status: $Enums.ExamLifecycle | null
+  mode: $Enums.ExamMode | null
   title: string | null
   description: string | null
   instructions: string | null
@@ -69,6 +70,7 @@ export type ExamVersionMaxAggregateOutputType = {
   examId: string | null
   versionNumber: number | null
   status: $Enums.ExamLifecycle | null
+  mode: $Enums.ExamMode | null
   title: string | null
   description: string | null
   instructions: string | null
@@ -93,6 +95,7 @@ export type ExamVersionCountAggregateOutputType = {
   examId: number
   versionNumber: number
   status: number
+  mode: number
   title: number
   description: number
   instructions: number
@@ -133,6 +136,7 @@ export type ExamVersionMinAggregateInputType = {
   examId?: true
   versionNumber?: true
   status?: true
+  mode?: true
   title?: true
   description?: true
   instructions?: true
@@ -157,6 +161,7 @@ export type ExamVersionMaxAggregateInputType = {
   examId?: true
   versionNumber?: true
   status?: true
+  mode?: true
   title?: true
   description?: true
   instructions?: true
@@ -181,6 +186,7 @@ export type ExamVersionCountAggregateInputType = {
   examId?: true
   versionNumber?: true
   status?: true
+  mode?: true
   title?: true
   description?: true
   instructions?: true
@@ -292,6 +298,7 @@ export type ExamVersionGroupByOutputType = {
   examId: string
   versionNumber: number
   status: $Enums.ExamLifecycle
+  mode: $Enums.ExamMode
   title: string
   description: string | null
   instructions: string | null
@@ -339,6 +346,7 @@ export type ExamVersionWhereInput = {
   examId?: Prisma.StringFilter<"ExamVersion"> | string
   versionNumber?: Prisma.IntFilter<"ExamVersion"> | number
   status?: Prisma.EnumExamLifecycleFilter<"ExamVersion"> | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFilter<"ExamVersion"> | $Enums.ExamMode
   title?: Prisma.StringFilter<"ExamVersion"> | string
   description?: Prisma.StringNullableFilter<"ExamVersion"> | string | null
   instructions?: Prisma.StringNullableFilter<"ExamVersion"> | string | null
@@ -367,6 +375,7 @@ export type ExamVersionOrderByWithRelationInput = {
   examId?: Prisma.SortOrder
   versionNumber?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   instructions?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -399,6 +408,7 @@ export type ExamVersionWhereUniqueInput = Prisma.AtLeast<{
   examId?: Prisma.StringFilter<"ExamVersion"> | string
   versionNumber?: Prisma.IntFilter<"ExamVersion"> | number
   status?: Prisma.EnumExamLifecycleFilter<"ExamVersion"> | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFilter<"ExamVersion"> | $Enums.ExamMode
   title?: Prisma.StringFilter<"ExamVersion"> | string
   description?: Prisma.StringNullableFilter<"ExamVersion"> | string | null
   instructions?: Prisma.StringNullableFilter<"ExamVersion"> | string | null
@@ -427,6 +437,7 @@ export type ExamVersionOrderByWithAggregationInput = {
   examId?: Prisma.SortOrder
   versionNumber?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   instructions?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -459,6 +470,7 @@ export type ExamVersionScalarWhereWithAggregatesInput = {
   examId?: Prisma.StringWithAggregatesFilter<"ExamVersion"> | string
   versionNumber?: Prisma.IntWithAggregatesFilter<"ExamVersion"> | number
   status?: Prisma.EnumExamLifecycleWithAggregatesFilter<"ExamVersion"> | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeWithAggregatesFilter<"ExamVersion"> | $Enums.ExamMode
   title?: Prisma.StringWithAggregatesFilter<"ExamVersion"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"ExamVersion"> | string | null
   instructions?: Prisma.StringNullableWithAggregatesFilter<"ExamVersion"> | string | null
@@ -482,6 +494,7 @@ export type ExamVersionCreateInput = {
   id?: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -510,6 +523,7 @@ export type ExamVersionUncheckedCreateInput = {
   examId: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -536,6 +550,7 @@ export type ExamVersionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -564,6 +579,7 @@ export type ExamVersionUncheckedUpdateInput = {
   examId?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -591,6 +607,7 @@ export type ExamVersionCreateManyInput = {
   examId: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -614,6 +631,7 @@ export type ExamVersionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -638,6 +656,7 @@ export type ExamVersionUncheckedUpdateManyInput = {
   examId?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -677,6 +696,7 @@ export type ExamVersionCountOrderByAggregateInput = {
   examId?: Prisma.SortOrder
   versionNumber?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   instructions?: Prisma.SortOrder
@@ -708,6 +728,7 @@ export type ExamVersionMaxOrderByAggregateInput = {
   examId?: Prisma.SortOrder
   versionNumber?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   instructions?: Prisma.SortOrder
@@ -732,6 +753,7 @@ export type ExamVersionMinOrderByAggregateInput = {
   examId?: Prisma.SortOrder
   versionNumber?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   title?: Prisma.SortOrder
   description?: Prisma.SortOrder
   instructions?: Prisma.SortOrder
@@ -809,6 +831,10 @@ export type EnumExamLifecycleFieldUpdateOperationsInput = {
   set?: $Enums.ExamLifecycle
 }
 
+export type EnumExamModeFieldUpdateOperationsInput = {
+  set?: $Enums.ExamMode
+}
+
 export type NullableFloatFieldUpdateOperationsInput = {
   set?: number | null
   increment?: number
@@ -867,6 +893,7 @@ export type ExamVersionCreateWithoutExamInput = {
   id?: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -893,6 +920,7 @@ export type ExamVersionUncheckedCreateWithoutExamInput = {
   id?: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -948,6 +976,7 @@ export type ExamVersionScalarWhereInput = {
   examId?: Prisma.StringFilter<"ExamVersion"> | string
   versionNumber?: Prisma.IntFilter<"ExamVersion"> | number
   status?: Prisma.EnumExamLifecycleFilter<"ExamVersion"> | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFilter<"ExamVersion"> | $Enums.ExamMode
   title?: Prisma.StringFilter<"ExamVersion"> | string
   description?: Prisma.StringNullableFilter<"ExamVersion"> | string | null
   instructions?: Prisma.StringNullableFilter<"ExamVersion"> | string | null
@@ -971,6 +1000,7 @@ export type ExamVersionCreateWithoutSectionsInput = {
   id?: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -998,6 +1028,7 @@ export type ExamVersionUncheckedCreateWithoutSectionsInput = {
   examId: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -1039,6 +1070,7 @@ export type ExamVersionUpdateWithoutSectionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1066,6 +1098,7 @@ export type ExamVersionUncheckedUpdateWithoutSectionsInput = {
   examId?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1091,6 +1124,7 @@ export type ExamVersionCreateWithoutAssignmentsInput = {
   id?: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -1118,6 +1152,7 @@ export type ExamVersionUncheckedCreateWithoutAssignmentsInput = {
   examId: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -1159,6 +1194,7 @@ export type ExamVersionUpdateWithoutAssignmentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1186,6 +1222,7 @@ export type ExamVersionUncheckedUpdateWithoutAssignmentsInput = {
   examId?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1211,6 +1248,7 @@ export type ExamVersionCreateWithoutAttemptsInput = {
   id?: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -1238,6 +1276,7 @@ export type ExamVersionUncheckedCreateWithoutAttemptsInput = {
   examId: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -1279,6 +1318,7 @@ export type ExamVersionUpdateWithoutAttemptsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1306,6 +1346,7 @@ export type ExamVersionUncheckedUpdateWithoutAttemptsInput = {
   examId?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1331,6 +1372,7 @@ export type ExamVersionCreateManyExamInput = {
   id?: string
   versionNumber: number
   status?: $Enums.ExamLifecycle
+  mode?: $Enums.ExamMode
   title: string
   description?: string | null
   instructions?: string | null
@@ -1354,6 +1396,7 @@ export type ExamVersionUpdateWithoutExamInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1380,6 +1423,7 @@ export type ExamVersionUncheckedUpdateWithoutExamInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1406,6 +1450,7 @@ export type ExamVersionUncheckedUpdateManyWithoutExamInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   versionNumber?: Prisma.IntFieldUpdateOperationsInput | number
   status?: Prisma.EnumExamLifecycleFieldUpdateOperationsInput | $Enums.ExamLifecycle
+  mode?: Prisma.EnumExamModeFieldUpdateOperationsInput | $Enums.ExamMode
   title?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   instructions?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1479,6 +1524,7 @@ export type ExamVersionSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   examId?: boolean
   versionNumber?: boolean
   status?: boolean
+  mode?: boolean
   title?: boolean
   description?: boolean
   instructions?: boolean
@@ -1508,6 +1554,7 @@ export type ExamVersionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   examId?: boolean
   versionNumber?: boolean
   status?: boolean
+  mode?: boolean
   title?: boolean
   description?: boolean
   instructions?: boolean
@@ -1533,6 +1580,7 @@ export type ExamVersionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   examId?: boolean
   versionNumber?: boolean
   status?: boolean
+  mode?: boolean
   title?: boolean
   description?: boolean
   instructions?: boolean
@@ -1558,6 +1606,7 @@ export type ExamVersionSelectScalar = {
   examId?: boolean
   versionNumber?: boolean
   status?: boolean
+  mode?: boolean
   title?: boolean
   description?: boolean
   instructions?: boolean
@@ -1577,7 +1626,7 @@ export type ExamVersionSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ExamVersionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "examId" | "versionNumber" | "status" | "title" | "description" | "instructions" | "availableFrom" | "deadline" | "timeLimitMinutes" | "attemptsAllowed" | "passingScore" | "shuffleQuestions" | "shuffleOptions" | "showScoreAfterSubmit" | "showCorrectAnswersAfterSubmit" | "allowLateSubmission" | "resultsReleaseMode" | "publishedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["examVersion"]>
+export type ExamVersionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "examId" | "versionNumber" | "status" | "mode" | "title" | "description" | "instructions" | "availableFrom" | "deadline" | "timeLimitMinutes" | "attemptsAllowed" | "passingScore" | "shuffleQuestions" | "shuffleOptions" | "showScoreAfterSubmit" | "showCorrectAnswersAfterSubmit" | "allowLateSubmission" | "resultsReleaseMode" | "publishedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["examVersion"]>
 export type ExamVersionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   exam?: boolean | Prisma.ExamDefaultArgs<ExtArgs>
   sections?: boolean | Prisma.ExamVersion$sectionsArgs<ExtArgs>
@@ -1605,6 +1654,7 @@ export type $ExamVersionPayload<ExtArgs extends runtime.Types.Extensions.Interna
     examId: string
     versionNumber: number
     status: $Enums.ExamLifecycle
+    mode: $Enums.ExamMode
     title: string
     description: string | null
     instructions: string | null
@@ -2053,6 +2103,7 @@ export interface ExamVersionFieldRefs {
   readonly examId: Prisma.FieldRef<"ExamVersion", 'String'>
   readonly versionNumber: Prisma.FieldRef<"ExamVersion", 'Int'>
   readonly status: Prisma.FieldRef<"ExamVersion", 'ExamLifecycle'>
+  readonly mode: Prisma.FieldRef<"ExamVersion", 'ExamMode'>
   readonly title: Prisma.FieldRef<"ExamVersion", 'String'>
   readonly description: Prisma.FieldRef<"ExamVersion", 'String'>
   readonly instructions: Prisma.FieldRef<"ExamVersion", 'String'>

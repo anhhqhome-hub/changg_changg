@@ -105,7 +105,7 @@ export function ExamRunner({
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div>
-            <p className="text-xs font-semibold uppercase text-indigo-700">changg changg exam</p>
+            <p className="text-xs font-semibold uppercase text-indigo-700">The Folio exam</p>
             <h1 className="text-lg font-bold text-slate-950">{title}</h1>
           </div>
           <div className="flex items-center gap-2">

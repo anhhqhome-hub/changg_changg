@@ -75,6 +75,14 @@ export const ExamLifecycle = {
 export type ExamLifecycle = (typeof ExamLifecycle)[keyof typeof ExamLifecycle]
 
 
+export const ExamMode = {
+  TEST: 'TEST',
+  PRACTICE: 'PRACTICE'
+} as const
+
+export type ExamMode = (typeof ExamMode)[keyof typeof ExamMode]
+
+
 export const ResultsReleaseMode = {
   IMMEDIATE: 'IMMEDIATE',
   AFTER_DEADLINE: 'AFTER_DEADLINE',

@@ -36,7 +36,7 @@ export function BrandLogo({ className, showText = true }: { className?: string; 
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <BrandMark />
-      {showText ? <span className="text-lg font-bold tracking-normal text-slate-950">changg changg</span> : null}
+      {showText ? <span className="text-lg font-bold tracking-normal text-slate-950">The Folio</span> : null}
     </div>
   );
 }

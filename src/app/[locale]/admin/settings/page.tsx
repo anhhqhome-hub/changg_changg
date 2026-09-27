@@ -72,11 +72,11 @@ export default async function AdminSettingsPage({ params }: { params: Promise<{ 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="grid gap-1 text-sm font-bold">
                   {text.titleVi}
-                  <Input name="founderTitle" defaultValue={settings?.founderTitle ?? ""} placeholder="Người sáng lập changg changg" maxLength={160} />
+                  <Input name="founderTitle" defaultValue={settings?.founderTitle ?? ""} placeholder="Người sáng lập The Folio" maxLength={160} />
                 </label>
                 <label className="grid gap-1 text-sm font-bold">
                   {text.titleEn}
-                  <Input name="founderTitleEn" defaultValue={settings?.founderTitleEn ?? ""} placeholder="Founder of changg changg" maxLength={160} />
+                  <Input name="founderTitleEn" defaultValue={settings?.founderTitleEn ?? ""} placeholder="Founder of The Folio" maxLength={160} />
                 </label>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
