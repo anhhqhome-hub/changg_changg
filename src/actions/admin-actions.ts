@@ -20,6 +20,7 @@ const adminCreateAccountSchema = z.object({
   password: z.string().min(8).max(128),
   role: z.enum(["ADMIN", "TEACHER", "STUDENT"]),
   schoolId: z.string().optional(),
+  schoolIds: z.array(z.string()).default([]),
   gradeLevel: z.string().max(40).optional(),
   locale: z.string().default("vi")
 });
@@ -31,6 +32,7 @@ const adminUpdateAccountSchema = z.object({
   role: z.enum(["ADMIN", "TEACHER", "STUDENT"]),
   status: z.enum(["PENDING", "APPROVED", "REJECTED", "SUSPENDED"]),
   schoolId: z.string().optional(),
+  schoolIds: z.array(z.string()).default([]),
   gradeLevel: z.string().max(40).optional(),
   locale: z.string().default("vi")
 });
@@ -122,31 +124,35 @@ export async function createAccountAction(formData: FormData) {
     username: formData.get("username"),
     password: formData.get("password"),
     role: formData.get("role"),
-    schoolId: (formData.get("schoolId") as string) || undefined,
+    schoolId: (formData.get("schoolId") as string) || (formData.getAll("schoolIds")[0] as string) || undefined,
+    schoolIds: formData.getAll("schoolIds").filter((value): value is string => typeof value === "string"),
     gradeLevel: (formData.get("gradeLevel") as string) || undefined,
     locale: formData.get("locale") || "vi"
   });
   const admin = await requireRole("ADMIN", parsed.locale);
-  if (parsed.role === "TEACHER" && !parsed.schoolId) throw new Error("TEACHER_SCHOOL_REQUIRED");
-  if (parsed.schoolId) {
-    await prisma.school.findFirstOrThrow({ where: { id: parsed.schoolId, active: true } });
-  }
+  const assignedSchoolIds = parsed.role === "TEACHER" ? [...new Set(parsed.schoolIds.length ? parsed.schoolIds : parsed.schoolId ? [parsed.schoolId] : [])] : parsed.schoolId ? [parsed.schoolId] : [];
+  if (parsed.role === "TEACHER" && assignedSchoolIds.length === 0) throw new Error("TEACHER_SCHOOL_REQUIRED");
+  if (assignedSchoolIds.length) await prisma.school.findMany({ where: { id: { in: assignedSchoolIds }, active: true } }).then((schools) => { if (schools.length !== assignedSchoolIds.length) throw new Error("SCHOOL_NOT_FOUND"); });
   const user = await createProvisionedUser({
     name: parsed.name,
     username: parsed.username,
     password: parsed.password,
     role: parsed.role,
-    schoolId: parsed.role === "ADMIN" ? undefined : parsed.schoolId,
+    schoolId: parsed.role === "ADMIN" ? undefined : assignedSchoolIds[0],
     gradeLevel: parsed.role === "STUDENT" ? parsed.gradeLevel : undefined,
     preferredLocale: parsed.locale
   });
+  if (parsed.role === "TEACHER") {
+    const profile = await prisma.teacherProfile.findUniqueOrThrow({ where: { userId: user.id } });
+    await prisma.teacherSchool.createMany({ data: assignedSchoolIds.map((schoolId) => ({ teacherProfileId: profile.id, schoolId })) });
+  }
   await prisma.auditLog.create({
     data: {
       actorUserId: admin.id,
       action: "ACCOUNT_CREATED_BY_ADMIN",
       entityType: "User",
       entityId: user.id,
-      metadata: JSON.stringify({ username: user.username, role: parsed.role, schoolId: parsed.schoolId ?? null })
+      metadata: JSON.stringify({ username: user.username, role: parsed.role, schoolIds: assignedSchoolIds })
     }
   });
   revalidatePath(`/${parsed.locale}/admin/users`);
@@ -159,7 +165,8 @@ export async function updateAccountAction(formData: FormData) {
     username: formData.get("username"),
     role: formData.get("role"),
     status: formData.get("status"),
-    schoolId: (formData.get("schoolId") as string) || undefined,
+    schoolId: (formData.get("schoolId") as string) || (formData.getAll("schoolIds")[0] as string) || undefined,
+    schoolIds: formData.getAll("schoolIds").filter((value): value is string => typeof value === "string"),
     gradeLevel: (formData.get("gradeLevel") as string) || undefined,
     locale: formData.get("locale") || "vi"
   });
@@ -187,8 +194,12 @@ export async function updateAccountAction(formData: FormData) {
       if (classCount > 0 || examCount > 0) throw new Error("ROLE_CHANGE_BLOCKED_TEACHER_HISTORY");
     }
   }
-  if (parsed.role === "TEACHER" && !parsed.schoolId) throw new Error("TEACHER_SCHOOL_REQUIRED");
-  if (parsed.schoolId) await prisma.school.findUniqueOrThrow({ where: { id: parsed.schoolId } });
+  const assignedSchoolIds = parsed.role === "TEACHER" ? [...new Set(parsed.schoolIds.length ? parsed.schoolIds : parsed.schoolId ? [parsed.schoolId] : [])] : parsed.schoolId ? [parsed.schoolId] : [];
+  if (parsed.role === "TEACHER" && assignedSchoolIds.length === 0) throw new Error("TEACHER_SCHOOL_REQUIRED");
+  if (assignedSchoolIds.length) {
+    const schools = await prisma.school.findMany({ where: { id: { in: assignedSchoolIds } } });
+    if (schools.length !== assignedSchoolIds.length) throw new Error("SCHOOL_NOT_FOUND");
+  }
 
   const username = normalizeUsername(parsed.username);
   if (!validateUsername(username)) throw new Error("INVALID_USERNAME");
@@ -218,14 +229,17 @@ export async function updateAccountAction(formData: FormData) {
     await prisma.studentProfile.deleteMany({ where: { userId: target.id } });
     await prisma.teacherProfile.upsert({
       where: { userId: target.id },
-      update: { displayName: parsed.name, schoolId: parsed.schoolId! },
+      update: { displayName: parsed.name, schoolId: assignedSchoolIds[0] },
       create: {
         userId: target.id,
         teacherCode: `GV-${username.toUpperCase()}-${target.id.slice(0, 6).toUpperCase()}`,
         displayName: parsed.name,
-        schoolId: parsed.schoolId!
+        schoolId: assignedSchoolIds[0]
       }
     });
+    await prisma.teacherSchool.deleteMany({ where: { teacherProfileId: target.teacherProfile?.id ?? "" } });
+    const profile = await prisma.teacherProfile.findUniqueOrThrow({ where: { userId: target.id } });
+    await prisma.teacherSchool.createMany({ data: assignedSchoolIds.map((schoolId) => ({ teacherProfileId: profile.id, schoolId })) });
   } else if (parsed.role === "STUDENT") {
     await prisma.teacherProfile.deleteMany({ where: { userId: target.id } });
     const school = parsed.schoolId
@@ -262,7 +276,7 @@ export async function updateAccountAction(formData: FormData) {
       entityId: target.id,
       metadata: JSON.stringify({
         from: { username: target.username, role: target.role, status: target.status },
-        to: { username, role: parsed.role, status: parsed.status, schoolId: parsed.schoolId ?? null }
+        to: { username, role: parsed.role, status: parsed.status, schoolIds: assignedSchoolIds }
       })
     }
   });

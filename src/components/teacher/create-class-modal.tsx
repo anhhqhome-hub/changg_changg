@@ -6,11 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 
 export function CreateClassModal({
   locale,
-  schoolName,
+  schools,
   currentAcademicYearName
 }: {
   locale: string;
-  schoolName?: string | null;
+  schools: { id: string; name: string }[];
   currentAcademicYearName: string;
 }) {
   const isEn = locale === "en";
@@ -37,7 +37,7 @@ export function CreateClassModal({
         school: "Trường",
         missing: "Admin cần gán trường cho giáo viên trước."
       };
-  const ready = Boolean(schoolName);
+  const ready = schools.length > 0;
 
   return (
     <Modal title={text.title} description={text.description} triggerLabel={text.trigger} triggerIcon="plus">
@@ -45,7 +45,9 @@ export function CreateClassModal({
         <input type="hidden" name="locale" value={locale} />
         <label className="grid gap-1 text-sm font-bold">
           {text.school}
-          <Input value={schoolName ?? "—"} readOnly disabled />
+          <select name="schoolId" defaultValue={schools[0]?.id ?? ""} className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm" disabled={!ready}>
+            {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+          </select>
         </label>
         <label className="grid gap-1 text-sm font-bold">
           {text.academicYear}

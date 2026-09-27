@@ -68,11 +68,15 @@ export async function createClassAction(formData: FormData) {
   const teacher = await requireRole("TEACHER", locale);
   const name = z.string().min(2).parse(formData.get("name"));
   const description = z.string().optional().parse(formData.get("description") || undefined);
-  const profile = await prisma.teacherProfile.findUniqueOrThrow({ where: { userId: teacher.id }, select: { schoolId: true } });
-  if (!profile.schoolId) throw new Error("TEACHER_SCHOOL_REQUIRED");
+  const requestedSchoolId = z.string().optional().parse(formData.get("schoolId") || undefined);
+  const profile = await prisma.teacherProfile.findUniqueOrThrow({ where: { userId: teacher.id }, select: { schoolId: true, schools: { select: { schoolId: true } } } });
+  const assignedSchoolIds = new Set(profile.schools.map((school) => school.schoolId));
+  if (profile.schoolId) assignedSchoolIds.add(profile.schoolId);
+  const schoolId = requestedSchoolId ?? profile.schoolId ?? profile.schools[0]?.schoolId;
+  if (!schoolId || !assignedSchoolIds.has(schoolId)) throw new Error("TEACHER_SCHOOL_REQUIRED");
   const academicYear = await getOrCreateCurrentAcademicYear();
   await prisma.class.create({
-    data: { name, description, teacherId: teacher.id, schoolId: profile.schoolId, academicYearId: academicYear.id }
+    data: { name, description, teacherId: teacher.id, schoolId, academicYearId: academicYear.id }
   });
   revalidatePath(`/${locale}/teacher/classes`);
 }

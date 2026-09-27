@@ -15,7 +15,7 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
   const isEn = locale === "en";
   const [users, schools] = await Promise.all([
     prisma.user.findMany({
-      include: { teacherProfile: { include: { school: true } }, studentProfile: { include: { school: true } }, _count: { select: { sessions: true } } },
+      include: { teacherProfile: { include: { school: true, schools: { include: { school: true } } } }, studentProfile: { include: { school: true } }, _count: { select: { sessions: true } } },
       orderBy: [{ role: "asc" }, { createdAt: "desc" }]
     }),
     prisma.school.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] })
@@ -55,8 +55,8 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
               </select>
             </label>
             <label className="grid gap-1 text-sm font-bold">
-              {isEn ? "School (required for teachers)" : "Trường (bắt buộc với giáo viên)"}
-              <select name="schoolId" defaultValue="" className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm">
+              {isEn ? "Schools (select one or more for teachers)" : "Trường (giáo viên có thể chọn nhiều trường)"}
+              <select name="schoolIds" defaultValue={[]} multiple className="min-h-24 rounded-md border border-slate-300 bg-white px-3 text-sm">
                 <option value="">{isEn ? "No school / assign later" : "Chưa gán trường / gán sau"}</option>
                 {schools.filter((school) => school.active).map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
               </select>
@@ -88,7 +88,8 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
             <tbody>
               {users.map((user) => {
                 const schoolId = user.teacherProfile?.schoolId ?? user.studentProfile?.schoolId ?? "";
-                const schoolName = user.teacherProfile?.school?.name ?? user.studentProfile?.school?.name ?? "—";
+                const teacherSchools = user.teacherProfile?.schools.map((assignment) => assignment.school.name) ?? [];
+                const schoolName = teacherSchools.length ? teacherSchools.join(", ") : user.teacherProfile?.school?.name ?? user.studentProfile?.school?.name ?? "—";
                 return (
                   <tr key={user.id} className="border-t border-slate-100 align-top">
                     <td className="py-3 font-semibold">{user.name}</td>
@@ -118,8 +119,8 @@ export default async function AdminUsersPage({ params }: { params: Promise<{ loc
                               </select>
                             </label>
                             <label className="grid gap-1 text-sm font-bold">
-                              {isEn ? "School" : "Trường"}
-                              <select name="schoolId" defaultValue={schoolId} className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm">
+                              {isEn ? "Schools" : "Các trường được gán"}
+                              <select name="schoolIds" defaultValue={user.teacherProfile?.schools.map((assignment) => assignment.schoolId) ?? (schoolId ? [schoolId] : [])} multiple className="min-h-24 rounded-md border border-slate-300 bg-white px-3 text-sm">
                                 <option value="">{isEn ? "No school" : "Chưa gán trường"}</option>
                                 {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
                               </select>

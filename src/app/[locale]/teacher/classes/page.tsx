@@ -29,7 +29,7 @@ export default async function TeacherClassesPage({
       orderBy: { createdAt: "desc" }
     }),
     prisma.class.count({ where: { teacherId: teacher.id, archivedAt: { not: null } } }),
-    prisma.teacherProfile.findUnique({ where: { userId: teacher.id }, include: { school: true } })
+    prisma.teacherProfile.findUnique({ where: { userId: teacher.id }, include: { school: true, schools: { include: { school: true } } } })
   ]);
   const totalStudents = classes.reduce((sum, item) => sum + item._count.memberships, 0);
 
@@ -77,7 +77,7 @@ export default async function TeacherClassesPage({
             <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">{text.subtitle}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <CreateClassModal locale={locale} schoolName={teacherProfile?.school?.name} currentAcademicYearName={currentAcademicYear.name} />
+            <CreateClassModal locale={locale} schools={teacherProfile?.schools.map((assignment) => ({ id: assignment.schoolId, name: assignment.school.name })) ?? (teacherProfile?.school ? [{ id: teacherProfile.school.id, name: teacherProfile.school.name }] : [])} currentAcademicYearName={currentAcademicYear.name} />
             <Button asChild variant="outline">
               <Link href={`/${locale}/teacher/classes${showArchived ? "" : "?archived=1"}`}>
                 {showArchived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
@@ -145,4 +145,3 @@ function Metric({ icon: Icon, value, label }: { icon: typeof Users; value: numbe
     </div>
   );
 }
-

@@ -77,6 +77,11 @@ export type School = Prisma.SchoolModel
  */
 export type TeacherProfile = Prisma.TeacherProfileModel
 /**
+ * Model TeacherSchool
+ * 
+ */
+export type TeacherSchool = Prisma.TeacherSchoolModel
+/**
  * Model AcademicYear
  * 
  */
