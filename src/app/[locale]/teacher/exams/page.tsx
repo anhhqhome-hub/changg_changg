@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateExamModal } from "@/components/teacher/create-exam-modal";
 import { AiExamModal } from "@/components/teacher/ai-generation-modals";
+import { DeleteDraftExamButton } from "@/components/teacher/delete-draft-exam-button";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 
@@ -41,6 +42,8 @@ export default async function TeacherExamsPage({ params }: { params: Promise<{ l
         published: "published",
         questions: "bank questions",
         assignments: "assignments",
+        deleteDraft: "Delete draft",
+        confirmDelete: "Delete this draft permanently?",
         noExams: "No exams yet. Start with a blank draft or import from Word/Excel."
       }
     : {
@@ -53,6 +56,8 @@ export default async function TeacherExamsPage({ params }: { params: Promise<{ l
         published: "đã xuất bản",
         questions: "câu trong kho",
         assignments: "lượt giao",
+        deleteDraft: "Xóa bản nháp",
+        confirmDelete: "Bạn có chắc muốn xóa vĩnh viễn bản nháp này không?",
         noExams: "Chưa có đề nào. Bắt đầu bằng bản nháp mới hoặc import từ Word/Excel."
       };
 
@@ -102,7 +107,8 @@ export default async function TeacherExamsPage({ params }: { params: Promise<{ l
                   0
                 ) ?? 0;
                 return (
-                  <Link key={exam.id} href={`/${locale}/teacher/exams/${exam.id}/builder`} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300">
+                  <article key={exam.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-indigo-300">
+                    <Link href={`/${locale}/teacher/exams/${exam.id}/builder`}>
                     <div className="mb-4 flex items-start justify-between gap-3">
                       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
                         <BookOpen className="h-5 w-5" />
@@ -118,7 +124,13 @@ export default async function TeacherExamsPage({ params }: { params: Promise<{ l
                       <span>{questions} {isEn ? "questions" : "câu"}</span>
                       <span>{exam._count.assignments} {text.assignments}</span>
                     </div>
-                  </Link>
+                    </Link>
+                    {version?.status === "DRAFT" && exam._count.assignments === 0 ? (
+                      <div className="mt-3 border-t border-slate-100 pt-3">
+                        <DeleteDraftExamButton locale={locale} examId={exam.id} label={text.deleteDraft} confirmMessage={text.confirmDelete} />
+                      </div>
+                    ) : null}
+                  </article>
                 );
               })}
             </div>

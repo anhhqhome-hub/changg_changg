@@ -772,6 +772,27 @@ export async function publishExamAction(formData: FormData) {
   revalidatePath(`/${locale}/teacher/exams/${examId}/assign`);
 }
 
+export async function deleteDraftExamAction(formData: FormData) {
+  const locale = localeSchema.parse(formData.get("locale") || "vi");
+  const teacher = await requireRole("TEACHER", locale);
+  const examId = z.string().min(1).parse(formData.get("examId"));
+  const exam = await prisma.exam.findFirst({
+    where: { id: examId, createdById: teacher.id },
+    include: { versions: { select: { status: true } } }
+  });
+  if (!exam) throw new Error("EXAM_NOT_FOUND");
+  if (exam.versions.length === 0 || exam.versions.some((version) => version.status !== "DRAFT")) {
+    throw new Error("EXAM_DELETE_DRAFT_ONLY");
+  }
+  const [assignmentCount, attemptCount] = await Promise.all([
+    prisma.examAssignment.count({ where: { examId } }),
+    prisma.examAttempt.count({ where: { version: { examId } } })
+  ]);
+  if (assignmentCount > 0 || attemptCount > 0) throw new Error("EXAM_HAS_ACTIVITY");
+  await prisma.exam.delete({ where: { id: exam.id } });
+  revalidatePath(`/${locale}/teacher/exams`);
+}
+
 export async function updateExamTimingAction(formData: FormData) {
   const locale = localeSchema.parse(formData.get("locale") || "vi");
   const teacher = await requireRole("TEACHER", locale);
