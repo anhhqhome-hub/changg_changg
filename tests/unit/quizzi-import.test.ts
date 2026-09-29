@@ -111,6 +111,19 @@ Sample passage.
     expect(questions[0].answer).toBe("C");
   });
 
+  it("parses A-F word bank options without merging E and F into D", () => {
+    const text = `
+      [<g>] Choose the suitable words. [</g>]
+      Question 37. I used to shop for ______________ at this supermarket.
+      A. recycle B. environment C. housewife D. carbon footprint E. [[QUIZZI_CORRECT]] groceries F. housework
+      [<br>]
+    `;
+    const questions = parseQuizziWordText(text);
+
+    expect(questions[0].options).toEqual(["recycle", "environment", "housewife", "carbon footprint", "groceries", "housework"]);
+    expect(questions[0].answer).toBe("E");
+  });
+
   it("applies the answer key to fill-blank questions and does not import key rows", () => {
     const text = `
       [<g>] Put the verbs in brackets in the correct form. [</g>]

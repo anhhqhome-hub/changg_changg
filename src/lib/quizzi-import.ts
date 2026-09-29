@@ -20,7 +20,7 @@ const breakMarker = /\s*\[<br>\]\s*/i;
 const groupTag = /\[<\/?g>\]/gi;
 const numberedQuestion = /^\s*\(\[?<([0-9]+)>\]?\)([\s\S]*)$/i;
 const namedQuestion = /^\s*Question\s+([0-9]+)[\.:]\s*([\s\S]*)$/i;
-type OptionMarker = { label: "A" | "B" | "C" | "D"; start: number; contentStart: number };
+type OptionMarker = { label: string; start: number; contentStart: number };
 const correctMarker = "[[QUIZZI_CORRECT]]";
 const boldStartMarker = "[[QUIZZI_BOLD_START]]";
 const boldEndMarker = "[[QUIZZI_BOLD_END]]";
@@ -195,9 +195,9 @@ function findOrderedOptionMarkers(text: string): OptionMarker[] {
   // `Washington D.C.`.
   const candidates: OptionMarker[] = [];
   const structuralText = removeFormattingMarkers(text);
-  const pattern = /([A-D])\s*[\.)]\s*/g;
+  const pattern = /([A-F])\s*[\.)]\s*/g;
   for (const match of structuralText.matchAll(pattern)) {
-    const label = match[1] as OptionMarker["label"];
+    const label = match[1];
     const structuralStart = match.index ?? 0;
     const start = mapStructuralIndex(text, structuralStart);
     const contentStart = mapStructuralIndex(text, structuralStart + match[0].length);
@@ -209,7 +209,7 @@ function findOrderedOptionMarkers(text: string): OptionMarker[] {
     if (candidates[startIndex].label !== "A") continue;
     const sequence = [candidates[startIndex]];
     let expectedCode = "B".charCodeAt(0);
-    for (let index = startIndex + 1; index < candidates.length && expectedCode <= "D".charCodeAt(0); index += 1) {
+    for (let index = startIndex + 1; index < candidates.length && expectedCode <= "F".charCodeAt(0); index += 1) {
       const expected = String.fromCharCode(expectedCode);
       if (candidates[index].label === expected) {
         sequence.push(candidates[index]);
@@ -217,7 +217,7 @@ function findOrderedOptionMarkers(text: string): OptionMarker[] {
       }
     }
     if (sequence.length > best.length) best = sequence;
-    if (best.length === 4) break;
+    if (best.length === 6) break;
   }
 
   return best.length >= 2 ? best : [];
