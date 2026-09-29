@@ -51,7 +51,7 @@ Sample passage.
     const questions = parseQuizziWordText(markedText);
 
     expect(questions).toHaveLength(1);
-    expect(questions[0].options).toEqual(["first", "**second**", "third", "fourth"]);
+    expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
     expect(questions[0].answer).toBe("B");
   });
 
@@ -97,6 +97,20 @@ Sample passage.
     expect(questions[1].answer).toBe("B");
   });
 
+  it("handles nested marked option letters when the punctuation is outside the inner mark", () => {
+    const html = `
+      <p>[&lt;g&gt;] Choose the correct answer [&lt;/g&gt;]</p>
+      <p>(&lt;4&gt;) Choose one.</p>
+      <p><mark>A</mark>. first <mark>B</mark>. second <mark><mark>C</mark>.</mark> third <mark>D</mark>. fourth</p>
+      <p>[&lt;br&gt;]</p>
+    `;
+    const markedText = quizziHtmlToMarkedText(html);
+    const questions = parseQuizziWordText(markedText);
+
+    expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
+    expect(questions[0].answer).toBe("C");
+  });
+
   it("applies the answer key to fill-blank questions and does not import key rows", () => {
     const text = `
       [<g>] Put the verbs in brackets in the correct form. [</g>]
@@ -104,7 +118,7 @@ Sample passage.
       [<br>]
       Question 30. Minh _______ (not take) this medicine before.
       [<br>]
-      KEY
+      **KEY**
       Question 29. gave
       Question 30. hasn't taken
     `;
@@ -114,6 +128,24 @@ Sample passage.
     expect(questions[0].options).toEqual([]);
     expect(questions[0].answer).toBe("gave");
     expect(questions[1].answer).toBe("hasn't taken");
+  });
+
+  it("applies markdown and entity encoded key rows", () => {
+    const text = `
+      [<g>] Put the verbs in brackets in the correct form. [</g>]
+      Question 29. She _______ (give) up boxing 2 months ago.
+      [<br>]
+      Question 30. Minh _______ (not take) this medicine before.
+      [<br>]
+      **KEY**
+      **Question 29.&#x20;**&#x67;ave
+      **Question 30.&#x20;**&#x68;asn’t taken
+    `;
+    const questions = parseQuizziWordText(text);
+
+    expect(questions).toHaveLength(2);
+    expect(questions[0].answer).toBe("gave");
+    expect(questions[1].answer).toBe("hasn’t taken");
   });
 
   it("creates a prompt when the Word marker is the only text before options", () => {

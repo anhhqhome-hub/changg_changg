@@ -168,9 +168,10 @@ function extractAnswerKey(text: string) {
 
   const answerKey = new Map<string, string>();
   for (const line of lines.slice(keyLineIndex + 1)) {
-    const question = getQuestionStart(line);
+    const keyLine = decodeBasicHtmlEntities(line).replace(/\*\*/g, "");
+    const question = getQuestionStart(keyLine);
     if (!question) continue;
-    const answer = cleanQuizziMarkup(stripQuestionMarker(line));
+    const answer = cleanQuizziMarkup(stripQuestionMarker(keyLine));
     if (answer) answerKey.set(question.number, answer);
   }
 
@@ -181,7 +182,7 @@ function extractAnswerKey(text: string) {
 }
 
 function isAnswerKeyHeading(line: string) {
-  const clean = cleanQuizziMarkup(line).replace(/\*/g, "").trim().toLocaleUpperCase();
+  const clean = cleanQuizziMarkup(decodeBasicHtmlEntities(line)).replace(/\*/g, "").trim().toLocaleUpperCase();
   return clean === "KEY" || clean === "ANSWER KEY" || clean === "ĐÁP ÁN" || clean === "DAP AN";
 }
 
@@ -296,6 +297,10 @@ export function quizziHtmlToMarkedText(html: string) {
     .replace(/<u(?:\s[^>]*)?>([\s\S]*?)<\/u>/gi, (_match, inner: string) => {
       return `${boldStartMarker}${inner}${boldEndMarker} ${correctMarker}`;
     })
+    .replace(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi, (_match, inner: string) => {
+      if (!containsOptionLabels(inner)) return _match;
+      return `<p>${markCorrectOptionInRow(inner, containsOptionRow(inner))}</p>`;
+    })
     .replace(/<mark>\s*([A-D])\s*([\.)])\s*<\/mark>/gi, (_match, label: string, punctuation: string) => {
       return `${label.toUpperCase()}${punctuation} ${correctMarker}`;
     })
@@ -304,10 +309,6 @@ export function quizziHtmlToMarkedText(html: string) {
     // as the answer marker and remove the formatting marks around the row.
     .replace(/<mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<\/mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<\/mark>/gi, (_match, before: string, underlined: string, after: string) => {
       return `${before}${boldStartMarker}${underlined}${boldEndMarker} ${correctMarker}${after}`;
-    })
-    .replace(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi, (_match, inner: string) => {
-      if (!inner.includes(correctMarker) || !containsOptionRow(inner)) return _match;
-      return `<p>${inner.replaceAll("<mark>", "").replaceAll("</mark>", "")}</p>`;
     })
     .replace(/<(?:mark|strong|b)(?:\s[^>]*)?>([\s\S]*?)<\/(?:mark|strong|b)>/gi, (_match, inner: string) => {
       return containsOptionRow(inner) ? inner : `${boldStartMarker}${inner}${boldEndMarker} ${correctMarker}`;
@@ -328,6 +329,26 @@ export function quizziHtmlToMarkedText(html: string) {
 function containsOptionRow(value: string) {
   const visible = value.replace(/<[^>]+>/g, "").replaceAll(boldStartMarker, "").replaceAll(boldEndMarker, "");
   return /A\s*[\.)][\s\S]*B\s*[\.)][\s\S]*C\s*[\.)][\s\S]*D\s*[\.)]/i.test(visible);
+}
+
+function markCorrectOptionInRow(value: string, allowSimpleCorrectLabel: boolean) {
+  const nestedLabel = /<mark>\s*<mark>\s*([A-D])\s*([\.)])?\s*<\/mark>\s*([\.)])?\s*<\/mark>/i;
+  const hasNestedCorrectLabel = nestedLabel.test(value);
+  const marked = hasNestedCorrectLabel
+    ? value.replace(new RegExp(nestedLabel.source, "gi"), (_match, label: string, innerPunctuation: string, outerPunctuation: string) => {
+        return `${label.toUpperCase()}${innerPunctuation || outerPunctuation || "."} ${correctMarker}`;
+      })
+    : !allowSimpleCorrectLabel
+      ? value
+    : value.replace(/<mark>\s*([A-D])\s*([\.)])([\s\S]*?)<\/mark>/gi, (_match, label: string, punctuation: string, rest: string) => {
+        return `${label.toUpperCase()}${punctuation} ${correctMarker}${rest}`;
+      });
+  return marked.replace(/<\/?mark>/gi, "");
+}
+
+function containsOptionLabels(value: string) {
+  const visible = value.replace(/<[^>]+>/g, "").replaceAll(boldStartMarker, "").replaceAll(boldEndMarker, "");
+  return /(?:^|\s)[A-D]\s*[\.)]/i.test(visible);
 }
 
 function decodeBasicHtmlEntities(value: string) {

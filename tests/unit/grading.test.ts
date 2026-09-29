@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizeFillBlank } from "@/domain/answers";
-import { gradeObjectiveAnswer } from "@/domain/grading";
+import { gradeObjectiveAnswer, isManualQuestion } from "@/domain/grading";
 
 describe("automatic grading", () => {
   it("grades single choice", () => {
@@ -27,6 +27,7 @@ describe("automatic grading", () => {
   });
 
   it("normalizes fill blank answers", () => {
+    expect(isManualQuestion("FILL_BLANK")).toBe(false);
     expect(normalizeFillBlank("  Watch   videos ")).toBe("watch videos");
     expect(
       gradeObjectiveAnswer(

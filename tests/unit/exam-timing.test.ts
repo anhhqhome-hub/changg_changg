@@ -16,4 +16,9 @@ describe("exam timing", () => {
     expect(deriveSubmittedStatus({ hasManualQuestions: true, expired: false })).toBe("GRADING");
     expect(deriveSubmittedStatus({ hasManualQuestions: false, expired: false })).toBe("GRADED");
   });
+
+  it("keeps objective-only auto submissions graded", () => {
+    expect(deriveSubmittedStatus({ hasManualQuestions: false, expired: true })).toBe("GRADED");
+    expect(deriveSubmittedStatus({ hasManualQuestions: true, expired: true })).toBe("AUTO_SUBMITTED");
+  });
 });

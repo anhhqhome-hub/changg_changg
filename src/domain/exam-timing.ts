@@ -27,6 +27,7 @@ export function deriveSubmittedStatus({
   hasManualQuestions: boolean;
   expired: boolean;
 }) {
+  if (!hasManualQuestions) return "GRADED" as const;
   if (expired) return "AUTO_SUBMITTED" as const;
-  return hasManualQuestions ? ("GRADING" as const) : ("GRADED" as const);
+  return "GRADING" as const;
 }
