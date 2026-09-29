@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, Library, Plus } from "lucide-react";
-import { addQuestionToExamAction, assignExamActionWithState, updateExamGroupContentAction, updateExamQuestionAction } from "@/actions/teacher-actions";
+import { ArrowRight, Library, Plus, Trash2 } from "lucide-react";
+import { addQuestionToExamAction, assignExamActionWithState, deleteExamQuestionAction, updateExamGroupContentAction, updateExamQuestionAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -203,13 +203,25 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                             </details> : null}
                           </article> : isFirstInGroup && group?.instructions ? <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">{group.instructions}</div> : null}
                           <article className="rounded-xl border border-slate-200 bg-white p-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-xs font-black uppercase text-slate-400">#{index + 1}</p>
-                              <h2 className="font-black text-slate-950"><RichText value={question.title} /></h2>
-                              <RichText value={question.prompt} className="mt-1 block text-sm text-slate-700" />
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-black uppercase text-slate-400">#{index + 1}</p>
+                                  <h2 className="font-black text-slate-950"><RichText value={question.title} /></h2>
+                                  <RichText value={question.prompt} className="mt-1 block text-sm text-slate-700" />
+                                </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                              <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">{question.points} pts</span>
+                              {version.status === "DRAFT" ? (
+                                <form action={deleteExamQuestionAction}>
+                                  <input type="hidden" name="locale" value={locale} />
+                                  <input type="hidden" name="examId" value={exam.id} />
+                                  <input type="hidden" name="questionId" value={question.id} />
+                                  <Button type="submit" variant="ghost" size="icon" className="text-red-600 hover:bg-red-50 hover:text-red-700" aria-label={isEn ? `Delete question ${index + 1}` : `Xóa câu hỏi ${index + 1}`} title={isEn ? "Delete question" : "Xóa câu hỏi"}>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </form>
+                              ) : null}
                             </div>
-                            <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">{question.points} pts</span>
                           </div>
                           <p className="mt-3 text-xs font-bold text-slate-500">{question.questionType}</p>
                           <div className="mt-3 grid gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3">

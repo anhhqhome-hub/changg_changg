@@ -2,6 +2,8 @@ import Link from "next/link";
 import { CalendarDays, Clock3, Flame, Goal, Sparkles } from "lucide-react";
 import { startAttemptAction } from "@/actions/student-actions";
 import { LearningTools } from "@/components/app/learning-tools";
+import { DailyGoalCard } from "@/components/student/daily-goal-card";
+import { AchievementBadges } from "@/components/student/achievement-badges";
 import { FirstLoginGuide } from "@/components/app/first-login-guide";
 import { ScoreCard } from "@/components/app/score-card";
 import { SkillBadge } from "@/components/app/skill-badge";
@@ -15,7 +17,13 @@ export default async function StudentDashboard({ params, searchParams }: { param
   const { locale } = await params;
   const { welcome } = await searchParams;
   const student = await requireRole("STUDENT", locale);
-  const [memberships, assignments, results] = await Promise.all([
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const previousWeekStart = new Date(weekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  const [memberships, assignments, results, completedToday, weekCompleted, previousWeekCompleted, submittedCount, completedDays] = await Promise.all([
     prisma.classMembership.findMany({ where: { studentId: student.id }, include: { class: true } }),
     prisma.examAssignment.findMany({
       where: { OR: [{ studentId: student.id }, { class: { memberships: { some: { studentId: student.id } } } }] },
@@ -23,8 +31,14 @@ export default async function StudentDashboard({ params, searchParams }: { param
       orderBy: { createdAt: "desc" },
       take: 8
     }),
-    prisma.examAttempt.findMany({ where: { studentId: student.id, releaseResults: true }, include: { version: true }, orderBy: { submittedAt: "desc" }, take: 5 })
+    prisma.examAttempt.findMany({ where: { studentId: student.id, releaseResults: true }, include: { version: true }, orderBy: { submittedAt: "desc" }, take: 5 }),
+    prisma.examAttempt.count({ where: { studentId: student.id, submittedAt: { gte: todayStart }, status: { in: ["SUBMITTED", "AUTO_SUBMITTED", "GRADED"] } } }),
+    prisma.examAttempt.count({ where: { studentId: student.id, submittedAt: { gte: weekStart }, status: { in: ["SUBMITTED", "AUTO_SUBMITTED", "GRADED"] } } }),
+    prisma.examAttempt.count({ where: { studentId: student.id, submittedAt: { gte: previousWeekStart, lt: weekStart }, status: { in: ["SUBMITTED", "AUTO_SUBMITTED", "GRADED"] } } }),
+    prisma.examAttempt.count({ where: { studentId: student.id, status: { in: ["SUBMITTED", "AUTO_SUBMITTED", "GRADED"] } } }),
+    prisma.$queryRaw<{ days: number }[]>`SELECT COUNT(DISTINCT date(submittedAt / 1000, 'unixepoch')) as days FROM ExamAttempt WHERE studentId = ${student.id} AND status IN ('SUBMITTED', 'AUTO_SUBMITTED', 'GRADED')`
   ]);
+  const completedDayCount = Number(completedDays[0]?.days ?? 0);
   return (
     <div className="space-y-5">
       <section className="overflow-hidden rounded-2xl border border-white/80 bg-white shadow-sm">
@@ -51,6 +65,8 @@ export default async function StudentDashboard({ params, searchParams }: { param
         <ScoreCard label="Bài được giao" value={assignments.length} />
         <ScoreCard label="Kết quả đã có" value={results.length} />
       </div>
+      <DailyGoalCard completedToday={completedToday} weekCompleted={weekCompleted} previousWeekCompleted={previousWeekCompleted} />
+      <AchievementBadges submittedCount={submittedCount} completedDays={completedDayCount} />
       <Card id="weekly-plan">
         <CardHeader className="flex flex-row items-start justify-between gap-3"><div><CardTitle>Bài kiểm tra sắp tới</CardTitle><p className="mt-1 text-sm text-slate-500">Giữ nhịp bằng một phiên học ngắn và tập trung.</p></div><CalendarDays className="h-5 w-5 text-indigo-600" aria-hidden="true" /></CardHeader>
         <CardContent className="space-y-3">

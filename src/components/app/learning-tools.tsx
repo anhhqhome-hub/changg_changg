@@ -16,7 +16,7 @@ const copy = {
         { title: "Làm bài", description: "Mở bài được giao và tiếp tục lượt đang làm.", label: "Xem bài kiểm tra", icon: BookOpenCheck, href: "/exams", tone: "bg-indigo-50 text-indigo-700" },
         { title: "Lớp của tôi", description: "Theo dõi lớp học, giáo viên và hoạt động mới.", label: "Mở lớp học", icon: Users, href: "/classes", tone: "bg-emerald-50 text-emerald-700" },
         { title: "Mục tiêu tuần", description: "Đặt một mục tiêu nhỏ để giữ nhịp học ổn định.", label: "Xem khu vực mục tiêu", icon: Target, href: "#weekly-plan", tone: "bg-amber-50 text-amber-800" },
-        { title: "Kỹ năng cần luyện", description: "Chọn Listening, Speaking, Reading hoặc Writing để bắt đầu.", label: "Xem kỹ năng", icon: Brain, href: "#skills", tone: "bg-sky-50 text-sky-700" }
+        { title: "Trò chơi kiến thức", description: "Chọn đáp án hoặc sắp xếp câu từ bài giáo viên giao.", label: "Luyện nhanh", icon: Brain, href: "/games", tone: "bg-sky-50 text-sky-700" }
       ]
     },
     teacher: {
@@ -40,7 +40,7 @@ const copy = {
         { title: "Take an exam", description: "Open assigned work or continue an attempt in progress.", label: "View exams", icon: BookOpenCheck, href: "/exams", tone: "bg-indigo-50 text-indigo-700" },
         { title: "My classes", description: "Keep up with classes, teachers, and new activity.", label: "Open classes", icon: Users, href: "/classes", tone: "bg-emerald-50 text-emerald-700" },
         { title: "Weekly goal", description: "Set one small goal to keep your learning rhythm steady.", label: "View goal area", icon: Target, href: "#weekly-plan", tone: "bg-amber-50 text-amber-800" },
-        { title: "Skills to practise", description: "Pick Listening, Speaking, Reading, or Writing to begin.", label: "View skills", icon: Brain, href: "#skills", tone: "bg-sky-50 text-sky-700" }
+        { title: "Knowledge games", description: "Choose answers or arrange sentences from assigned work.", label: "Quick practice", icon: Brain, href: "/games", tone: "bg-sky-50 text-sky-700" }
       ]
     },
     teacher: {

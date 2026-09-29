@@ -539,6 +539,24 @@ export async function updateExamQuestionAction(formData: FormData) {
   revalidatePath(`/${locale}/teacher/exams/${examId}/builder`);
 }
 
+export async function deleteExamQuestionAction(formData: FormData) {
+  const locale = localeSchema.parse(formData.get("locale") || "vi");
+  const teacher = await requireRole("TEACHER", locale);
+  const examId = z.string().min(1).parse(formData.get("examId"));
+  const questionId = z.string().min(1).parse(formData.get("questionId"));
+
+  const question = await prisma.examQuestion.findFirstOrThrow({
+    where: {
+      id: questionId,
+      group: { section: { version: { examId, exam: { createdById: teacher.id }, status: "DRAFT" } } }
+    },
+    select: { id: true }
+  });
+
+  await prisma.examQuestion.delete({ where: { id: question.id } });
+  revalidatePath(`/${locale}/teacher/exams/${examId}/builder`);
+}
+
 export async function updateExamGroupContentAction(formData: FormData) {
   const locale = localeSchema.parse(formData.get("locale") || "vi");
   const teacher = await requireRole("TEACHER", locale);
