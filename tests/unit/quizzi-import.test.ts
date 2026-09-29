@@ -68,6 +68,54 @@ Sample passage.
     expect(questions[0].answer).toBe("B");
   });
 
+  it("does not mark the last option when a cloze answer row is bold as a whole", () => {
+    const html = `
+      <p>[&lt;g&gt;] Choose the correct answer [&lt;/g&gt;]</p>
+      <p><strong>(&lt;1&gt;) <u>A.</u> months <u>B.</u> decades C. days D. weeks</strong></p>
+      <p>[&lt;br&gt;]</p>
+    `;
+    const markedText = quizziHtmlToMarkedText(html);
+    const questions = parseQuizziWordText(markedText);
+
+    expect(questions[0].options).toEqual(["months", "decades", "days", "weeks"]);
+    expect(questions[0].answer).toBe("B");
+  });
+
+  it("keeps an option marker before a following paragraph with nested formatting", () => {
+    const html = `
+      <p>[&lt;g&gt;] Choose the correct answer [&lt;/g&gt;]</p>
+      <p><mark>Question 1.</mark> Choose one.</p>
+      <p>A. first B. second C. third <mark>D.</mark> fourth</p>
+      <p><mark>Question 2.</mark> A prompt with <mark><mark>underlined</mark>.</mark></p>
+      <p>A. one <mark>B.</mark> two C. three D. four</p>
+      <p>[&lt;br&gt;]</p>
+    `;
+    const markedText = quizziHtmlToMarkedText(html);
+    const questions = parseQuizziWordText(markedText);
+
+    expect(questions[0].answer).toBe("D");
+    expect(questions[1].answer).toBe("B");
+  });
+
+  it("applies the answer key to fill-blank questions and does not import key rows", () => {
+    const text = `
+      [<g>] Put the verbs in brackets in the correct form. [</g>]
+      Question 29. She _______ (give) up boxing 2 months ago.
+      [<br>]
+      Question 30. Minh _______ (not take) this medicine before.
+      [<br>]
+      KEY
+      Question 29. gave
+      Question 30. hasn't taken
+    `;
+    const questions = parseQuizziWordText(text);
+
+    expect(questions).toHaveLength(2);
+    expect(questions[0].options).toEqual([]);
+    expect(questions[0].answer).toBe("gave");
+    expect(questions[1].answer).toBe("hasn't taken");
+  });
+
   it("creates a prompt when the Word marker is the only text before options", () => {
     const text = `
       [<g>] Read and choose [</g>]

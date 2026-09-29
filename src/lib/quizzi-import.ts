@@ -35,8 +35,9 @@ export function parseQuizziWordText(text: string): QuizziParsedQuestion[] {
     new RegExp(`([A-D])\\s*(?:${escapeRegExp(boldEndMarker)})?\\s*${escapeRegExp(correctMarker)}\\s*([\\.)])`, "g"),
     `$1$2 ${correctMarker}`
   );
+  const { contentText, answerKey } = extractAnswerKey(normalizedText);
 
-  const sections = normalizedText
+  const sections = contentText
     .split(breakMarker)
     .map((section) => section.trim())
     .filter(Boolean);
@@ -79,6 +80,7 @@ export function parseQuizziWordText(text: string): QuizziParsedQuestion[] {
       const block = lines.slice(start.index, end);
       const parsed = parseQuestionBlock(block, start.question.number, Boolean(passageBody));
       if (!parsed) continue;
+      const answer = parsed.answer || (parsed.options.length === 0 ? answerKey.get(start.question.number) : undefined) || "";
 
       result.push({
         groupKey,
@@ -90,7 +92,7 @@ export function parseQuizziWordText(text: string): QuizziParsedQuestion[] {
         title: `Câu ${start.question.number}`,
         prompt: parsed.prompt,
         options: parsed.options,
-        answer: parsed.answer
+        answer
       });
     }
   }
@@ -157,6 +159,30 @@ function parseQuestionBlock(block: string[], number: string, hasPassage: boolean
   if (!prompt && cleanedOptions.length === 0) return null;
 
   return { prompt, options: cleanedOptions, answer };
+}
+
+function extractAnswerKey(text: string) {
+  const lines = text.split(/\r?\n/);
+  const keyLineIndex = lines.findIndex((line) => isAnswerKeyHeading(line));
+  if (keyLineIndex < 0) return { contentText: text, answerKey: new Map<string, string>() };
+
+  const answerKey = new Map<string, string>();
+  for (const line of lines.slice(keyLineIndex + 1)) {
+    const question = getQuestionStart(line);
+    if (!question) continue;
+    const answer = cleanQuizziMarkup(stripQuestionMarker(line));
+    if (answer) answerKey.set(question.number, answer);
+  }
+
+  return {
+    contentText: lines.slice(0, keyLineIndex).join("\n").trim(),
+    answerKey
+  };
+}
+
+function isAnswerKeyHeading(line: string) {
+  const clean = cleanQuizziMarkup(line).replace(/\*/g, "").trim().toLocaleUpperCase();
+  return clean === "KEY" || clean === "ANSWER KEY" || clean === "ĐÁP ÁN" || clean === "DAP AN";
 }
 
 
@@ -265,8 +291,26 @@ function looksLikePassageTitle(line: string) {
  */
 export function quizziHtmlToMarkedText(html: string) {
   const withCorrectMarkers = html
+    // Underline is the reliable answer marker. Handle it before bold so a
+    // bold wrapper around an entire A-D row cannot turn the last option into D.
+    .replace(/<u(?:\s[^>]*)?>([\s\S]*?)<\/u>/gi, (_match, inner: string) => {
+      return `${boldStartMarker}${inner}${boldEndMarker} ${correctMarker}`;
+    })
+    .replace(/<mark>\s*([A-D])\s*([\.)])\s*<\/mark>/gi, (_match, label: string, punctuation: string) => {
+      return `${label.toUpperCase()}${punctuation} ${correctMarker}`;
+    })
+    // With Mammoth's `u => mark, b => mark` map, an underlined run inside a
+    // bold answer row becomes nested <mark> tags. Keep only the nested mark
+    // as the answer marker and remove the formatting marks around the row.
+    .replace(/<mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<\/mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<\/mark>/gi, (_match, before: string, underlined: string, after: string) => {
+      return `${before}${boldStartMarker}${underlined}${boldEndMarker} ${correctMarker}${after}`;
+    })
+    .replace(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi, (_match, inner: string) => {
+      if (!inner.includes(correctMarker) || !containsOptionRow(inner)) return _match;
+      return `<p>${inner.replaceAll("<mark>", "").replaceAll("</mark>", "")}</p>`;
+    })
     .replace(/<(?:mark|strong|b)(?:\s[^>]*)?>([\s\S]*?)<\/(?:mark|strong|b)>/gi, (_match, inner: string) => {
-    return `${boldStartMarker}${inner}${boldEndMarker} ${correctMarker}`;
+      return containsOptionRow(inner) ? inner : `${boldStartMarker}${inner}${boldEndMarker} ${correctMarker}`;
     });
 
   return decodeBasicHtmlEntities(
@@ -279,6 +323,11 @@ export function quizziHtmlToMarkedText(html: string) {
     .replace(/\r/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+function containsOptionRow(value: string) {
+  const visible = value.replace(/<[^>]+>/g, "").replaceAll(boldStartMarker, "").replaceAll(boldEndMarker, "");
+  return /A\s*[\.)][\s\S]*B\s*[\.)][\s\S]*C\s*[\.)][\s\S]*D\s*[\.)]/i.test(visible);
 }
 
 function decodeBasicHtmlEntities(value: string) {

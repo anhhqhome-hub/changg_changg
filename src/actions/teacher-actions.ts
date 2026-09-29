@@ -601,6 +601,9 @@ function editorCorrectAnswersJson(questionType: string, answer: string) {
   if (questionType === "FILL_BLANK" || questionType === "LISTENING_FILL_BLANK") return JSON.stringify(values);
   if (questionType === "ORDERING") return JSON.stringify(values);
   if (questionType === "MATCHING") return answer.trim() || JSON.stringify({});
+  if (questionType === "SHORT_ANSWER" || questionType === "ESSAY" || questionType === "SPEAKING_RECORDING") {
+    return answer.trim() ? JSON.stringify([answer.trim()]) : null;
+  }
   return null;
 }
 
@@ -1058,7 +1061,7 @@ async function parseExamImportFile(file: File) {
         title: question.title,
         prompt: question.prompt,
         skill: "READING",
-        questionType: question.options.length >= 2 ? "READING_SINGLE_CHOICE" : "ESSAY",
+        questionType: question.options.length >= 2 ? "READING_SINGLE_CHOICE" : question.answer ? "FILL_BLANK" : "ESSAY",
         options: question.options,
         answer: question.answer ?? "",
         points: 1,
