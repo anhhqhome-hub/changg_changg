@@ -67,6 +67,58 @@ export async function startAttemptAction(formData: FormData) {
   redirect(`/${locale}/student/attempts/${attempt.id}`);
 }
 
+export async function joinPracticeLinkAction(locale: string, token: string) {
+  const parsedLocale = z.string().default("vi").parse(locale || "vi");
+  const parsedToken = z.string().min(12).parse(token);
+  const student = await requireRole("STUDENT", parsedLocale);
+  const version = await prisma.examVersion.findFirstOrThrow({
+    where: {
+      practiceShareToken: parsedToken,
+      status: "PUBLISHED",
+      mode: "PRACTICE"
+    },
+    select: {
+      id: true,
+      examId: true,
+      exam: { select: { createdById: true } },
+      deadline: true
+    }
+  });
+
+  if (version.deadline && new Date() >= version.deadline) {
+    redirect(`/${parsedLocale}/student?error=deadline-passed`);
+  }
+
+  const existing = await prisma.examAssignment.findFirst({
+    where: {
+      versionId: version.id,
+      targetType: "STUDENT",
+      studentId: student.id
+    },
+    select: { id: true }
+  });
+  if (existing) redirect(`/${parsedLocale}/student/exams/${existing.id}`);
+
+  const membership = await prisma.classMembership.findFirst({
+    where: { studentId: student.id, class: { archivedAt: null, academicYearId: { not: null } } },
+    orderBy: { createdAt: "desc" },
+    select: { class: { select: { academicYearId: true } } }
+  });
+  const assignment = await prisma.examAssignment.create({
+    data: {
+      examId: version.examId,
+      versionId: version.id,
+      targetType: "STUDENT",
+      studentId: student.id,
+      academicYearId: membership?.class.academicYearId ?? null,
+      createdById: version.exam.createdById
+    },
+    select: { id: true }
+  });
+
+  redirect(`/${parsedLocale}/student/exams/${assignment.id}`);
+}
+
 export async function restartPracticeAttemptAction(formData: FormData) {
   const locale = z.string().default("vi").parse(formData.get("locale") || "vi");
   const student = await requireRole("STUDENT", locale);

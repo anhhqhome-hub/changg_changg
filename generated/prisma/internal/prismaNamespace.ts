@@ -3118,6 +3118,7 @@ export const ExamVersionScalarFieldEnum = {
   versionNumber: 'versionNumber',
   status: 'status',
   mode: 'mode',
+  practiceShareToken: 'practiceShareToken',
   title: 'title',
   description: 'description',
   instructions: 'instructions',

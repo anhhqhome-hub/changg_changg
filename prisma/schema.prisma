@@ -389,6 +389,7 @@ model ExamVersion {
   versionNumber                 Int
   status                        ExamLifecycle      @default(DRAFT)
   mode                          ExamMode           @default(TEST)
+  practiceShareToken            String?            @unique
   title                         String
   description                   String?
   instructions                  String?

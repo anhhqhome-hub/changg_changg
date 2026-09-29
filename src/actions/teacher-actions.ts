@@ -1,5 +1,6 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import mammoth from "mammoth";
@@ -273,6 +274,8 @@ export async function importExamFromFileAction(
         }
       }
     }
+    const warnings = buildImportWarnings(importedQuestions, locale);
+    checks.unshift(...warnings);
 
     const exam = await createExamFromImportedQuestions({
       teacherId: teacher.id,
@@ -289,7 +292,7 @@ export async function importExamFromFileAction(
         action: "EXAM_IMPORTED",
         entityType: "Exam",
         entityId: exam.id,
-        metadata: JSON.stringify({ fileName: file.name, questionCount: importedQuestions.length, aiReview: useAiReview, checks })
+        metadata: JSON.stringify({ fileName: file.name, questionCount: importedQuestions.length, aiReview: useAiReview, checks, warnings })
       }
     });
   } catch (error) {
@@ -825,6 +828,7 @@ export async function publishExamAction(formData: FormData) {
       publishedAt: new Date(),
       mode: finalMode,
       attemptsAllowed,
+      practiceShareToken: version.practiceShareToken ?? createPracticeShareToken(),
       showScoreAfterSubmit: true,
       showCorrectAnswersAfterSubmit: finalMode === "PRACTICE" ? true : version.showCorrectAnswersAfterSubmit,
       resultsReleaseMode: finalMode === "PRACTICE" ? "IMMEDIATE" : version.resultsReleaseMode
@@ -948,7 +952,7 @@ export async function assignExamActionWithState(_state: AssignExamActionState, f
     if (questionCount === 0) return { error: "EXAM_NEEDS_QUESTIONS" };
     const finalMode = mode ?? version.mode;
     const attemptsAllowed = finalMode === "PRACTICE" ? 1 : z.coerce.number().int().min(1).max(20).parse(requestedAttempts || version.attemptsAllowed);
-    await prisma.examVersion.update({ where: { id: version.id }, data: { status: "PUBLISHED", publishedAt: new Date(), mode: finalMode, attemptsAllowed, showScoreAfterSubmit: true, showCorrectAnswersAfterSubmit: finalMode === "PRACTICE", resultsReleaseMode: finalMode === "PRACTICE" ? "IMMEDIATE" : version.resultsReleaseMode } });
+    await prisma.examVersion.update({ where: { id: version.id }, data: { status: "PUBLISHED", publishedAt: new Date(), mode: finalMode, attemptsAllowed, practiceShareToken: version.practiceShareToken ?? createPracticeShareToken(), showScoreAfterSubmit: true, showCorrectAnswersAfterSubmit: finalMode === "PRACTICE", resultsReleaseMode: finalMode === "PRACTICE" ? "IMMEDIATE" : version.resultsReleaseMode } });
     await prisma.auditLog.create({
       data: { actorUserId: teacher.id, action: "EXAM_PUBLISHED", entityType: "ExamVersion", entityId: version.id }
     });
@@ -1283,12 +1287,64 @@ function canReviewMissingAnswersWithAi(questions: ImportedQuestion[]) {
   return totalChars <= 18_000;
 }
 
+function buildImportWarnings(questions: ImportedQuestion[], locale: string) {
+  const isEn = locale === "en";
+  const missingChoiceAnswers = questions.filter((question) => question.options.length >= 2 && !question.answer.trim());
+  const missingKeyQuestions = questions.filter((question) => question.options.length < 2 && !question.answer.trim());
+  const unmatchedAnswers = questions.filter((question) => question.options.length >= 2 && question.answer.trim() && !hasMatchingChoiceAnswer(question));
+  const suspiciousOptionText = questions.filter((question) => question.options.length < 2 && /(?:^|\s)[B-F]\s*[\.)]/i.test(question.prompt));
+  const warnings: string[] = [];
+
+  if (missingChoiceAnswers.length) {
+    warnings.push(
+      isEn
+        ? `${missingChoiceAnswers.length} choice questions have no detected correct answer: ${formatImportWarningSamples(missingChoiceAnswers)}.`
+        : `${missingChoiceAnswers.length} câu trắc nghiệm chưa nhận được đáp án đúng: ${formatImportWarningSamples(missingChoiceAnswers)}.`
+    );
+  }
+  if (missingKeyQuestions.length) {
+    warnings.push(
+      isEn
+        ? `${missingKeyQuestions.length} fill-in/free-response questions have no answer key, so they may need teacher review: ${formatImportWarningSamples(missingKeyQuestions)}.`
+        : `${missingKeyQuestions.length} câu điền chỗ trống/tự luận chưa có key, có thể cần giáo viên rà soát: ${formatImportWarningSamples(missingKeyQuestions)}.`
+    );
+  }
+  if (unmatchedAnswers.length) {
+    warnings.push(
+      isEn
+        ? `${unmatchedAnswers.length} questions have answers that do not match their options: ${formatImportWarningSamples(unmatchedAnswers)}.`
+        : `${unmatchedAnswers.length} câu có đáp án không khớp với lựa chọn: ${formatImportWarningSamples(unmatchedAnswers)}.`
+    );
+  }
+  if (suspiciousOptionText.length) {
+    warnings.push(
+      isEn
+        ? `${suspiciousOptionText.length} questions look like their option labels were not parsed correctly: ${formatImportWarningSamples(suspiciousOptionText)}.`
+        : `${suspiciousOptionText.length} câu có vẻ bị lỗi định dạng lựa chọn trong file Word: ${formatImportWarningSamples(suspiciousOptionText)}.`
+    );
+  }
+
+  return warnings;
+}
+
+function formatImportWarningSamples(questions: ImportedQuestion[]) {
+  return questions.slice(0, 5).map((question) => question.sourceNumber ? `#${question.sourceNumber}` : `"${question.title.slice(0, 40)}"`).join(", ");
+}
+
+function hasMatchingChoiceAnswer(question: ImportedQuestion) {
+  return question.options.some((option, index) => isCorrectOption(question.answer, option, index));
+}
+
 function safeReviewedChoiceAnswer(answer: string, options: string[]) {
   const trimmed = answer.trim();
   const letter = trimmed.match(/^([A-D])(?:[\.)]|$)/i)?.[1]?.toUpperCase();
   if (letter && letter.charCodeAt(0) - 65 < options.length) return letter;
   const optionIndex = options.findIndex((option) => option.trim().toLocaleLowerCase() === trimmed.toLocaleLowerCase());
   return optionIndex >= 0 ? String.fromCharCode(65 + optionIndex) : "";
+}
+
+function createPracticeShareToken() {
+  return randomBytes(18).toString("base64url");
 }
 
 function safeImportError(error: unknown) {

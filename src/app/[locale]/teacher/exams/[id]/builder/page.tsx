@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Library, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Library, Plus, Trash2 } from "lucide-react";
 import { addQuestionToExamAction, assignExamActionWithState, deleteExamQuestionAction, updateExamGroupContentAction, updateExamQuestionAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -8,11 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AssignExamModal } from "@/components/teacher/assign-exam-modal";
+import { PracticeShareLinkButton } from "@/components/teacher/practice-share-link-button";
 import { QuestionEditorForm } from "@/components/teacher/question-editor-form";
 import { QuestionSlideNavigator } from "@/components/teacher/question-slide-navigator";
 import { RichText } from "@/components/ui/rich-text";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
+import { parseJson } from "@/lib/utils";
 import type { Skill } from "@/generated/prisma/enums";
 
 export default async function ExamBuilderPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
@@ -49,7 +51,7 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
     );
   }
 
-  const [bank, classes, students] = await Promise.all([
+  const [bank, classes, students, importLog] = await Promise.all([
     prisma.questionBankItem.findMany({ where: { createdById: teacher.id }, orderBy: { createdAt: "desc" }, include: { _count: { select: { examQuestions: true } } } }),
     prisma.class.findMany({
       where: { teacherId: teacher.id, archivedAt: null },
@@ -60,6 +62,11 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
       where: { role: "STUDENT", status: "APPROVED", memberships: { some: { class: { teacherId: teacher.id } } } },
       orderBy: { name: "asc" },
       select: { id: true, name: true }
+    }),
+    prisma.auditLog.findFirst({
+      where: { entityType: "Exam", entityId: id, action: "EXAM_IMPORTED" },
+      orderBy: { createdAt: "desc" },
+      select: { metadata: true }
     })
   ]);
   const version = exam.versions[0];
@@ -73,6 +80,7 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
   }
   const questions = version.sections.flatMap((section) => section.groups.flatMap((group) => group.questions));
   const totalPoints = questions.reduce((sum, question) => sum + question.points, 0);
+  const importWarnings = parseJson<{ warnings?: string[] }>(importLog?.metadata, {}).warnings?.filter(Boolean) ?? [];
   const bankBySkill = bank.reduce<Record<Skill, typeof bank>>(
     (acc, item) => {
       acc[item.skill].push(item);
@@ -93,6 +101,9 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         attempts: "Attempts",
         mode: "Mode",
         release: "Release",
+        importWarningTitle: "Import warnings",
+        copyPracticeLink: "Copy practice link",
+        copiedPracticeLink: "Copied link",
         addFromBank: "Add from bank",
         noQuestions: "No questions in this section yet.",
         noBank: "No matching bank questions for this skill.",
@@ -114,6 +125,9 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         attempts: "Số lượt làm",
         mode: "Chế độ",
         release: "Trả kết quả",
+        importWarningTitle: "Cảnh báo import",
+        copyPracticeLink: "Copy link luyện tập",
+        copiedPracticeLink: "Đã copy link",
         addFromBank: "Thêm từ ngân hàng",
         noQuestions: "Section này chưa có câu hỏi.",
         noBank: "Chưa có câu hỏi phù hợp kỹ năng này trong ngân hàng.",
@@ -156,9 +170,32 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
               defaultAttemptsAllowed={version.attemptsAllowed}
               text={{ open: text.assignOpen, title: text.assignTitle, description: text.assignDescription, targetLabel: text.targetLabel, targetClass: text.targetClass, targetStudent: text.targetStudent, classLabel: text.classLabel, studentLabel: text.studentLabel, classPlaceholder: text.classPlaceholder, studentPlaceholder: text.studentPlaceholder, chooseTarget: text.chooseTarget, mode: text.mode, attempts: text.attempts, timeLimit: text.timeLimit, deadline: text.deadline, timingHint: text.timingHint, errorClassEmpty: text.errorClassEmpty, errorStudentUnavailable: text.errorStudentUnavailable, errorNoQuestions: text.errorNoQuestions, errorNotAssignable: text.errorNotAssignable, success: text.success, submit: text.assignSubmit, submitting: text.assigning, cancel: text.cancel }}
             />
+            {version.status === "PUBLISHED" && version.mode === "PRACTICE" && version.practiceShareToken ? (
+              <PracticeShareLinkButton
+                path={`/${locale}/student/practice/${version.practiceShareToken}`}
+                label={text.copyPracticeLink}
+                copiedLabel={text.copiedPracticeLink}
+              />
+            ) : null}
           </div>
         </div>
       </section>
+
+      {importWarnings.length ? (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-black">{text.importWarningTitle}</h2>
+              <ul className="mt-2 grid gap-1 text-sm font-semibold leading-6">
+                {importWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
         <QuestionSlideNavigator previousLabel={isEn ? "Previous section" : "Phần trước"} nextLabel={isEn ? "Next section" : "Phần tiếp"} labels={version.sections.map((section, index) => `${isEn ? "Section" : "Phần"} ${index + 1}: ${section.title}`)} slides={version.sections.map((section) => {
