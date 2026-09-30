@@ -698,6 +698,34 @@ export async function createExamAction(formData: FormData) {
   redirect(`/${locale}/teacher/exams/${exam.id}/builder`);
 }
 
+export async function renameExamAction(formData: FormData) {
+  const locale = localeSchema.parse(formData.get("locale") || "vi");
+  const teacher = await requireRole("TEACHER", locale);
+  const examId = z.string().min(1).parse(formData.get("examId"));
+  const title = z.string().trim().min(2).max(160).parse(formData.get("title"));
+  const exam = await prisma.exam.findFirstOrThrow({
+    where: { id: examId, createdById: teacher.id },
+    include: { versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { id: true } } }
+  });
+  const latestVersion = exam.versions[0];
+  await prisma.$transaction([
+    prisma.exam.update({ where: { id: exam.id }, data: { title } }),
+    ...(latestVersion ? [prisma.examVersion.update({ where: { id: latestVersion.id }, data: { title } })] : []),
+    prisma.auditLog.create({
+      data: {
+        actorUserId: teacher.id,
+        action: "EXAM_RENAMED",
+        entityType: "Exam",
+        entityId: exam.id,
+        metadata: JSON.stringify({ from: exam.title, to: title })
+      }
+    })
+  ]);
+  revalidatePath(`/${locale}/teacher/exams`);
+  revalidatePath(`/${locale}/teacher/exams/${exam.id}/builder`);
+  revalidatePath(`/${locale}/student`);
+}
+
 export async function generateExamWithAIAction(formData: FormData) {
   const locale = localeSchema.parse(formData.get("locale") || "vi");
   const teacher = await requireRole("TEACHER", locale);

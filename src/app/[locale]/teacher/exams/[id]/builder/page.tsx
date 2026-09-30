@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, Library, Plus, Trash2 } from "lucide-react";
-import { addQuestionToExamAction, assignExamActionWithState, deleteExamQuestionAction, updateExamGroupContentAction, updateExamQuestionAction } from "@/actions/teacher-actions";
+import { addQuestionToExamAction, assignExamActionWithState, deleteExamQuestionAction, renameExamAction, updateExamGroupContentAction, updateExamQuestionAction } from "@/actions/teacher-actions";
 import { SkillBadge } from "@/components/app/skill-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,9 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         mode: "Mode",
         release: "Release",
         importWarningTitle: "Import warnings",
+        renameExam: "Rename exam",
+        saveName: "Save name",
+        examNamePlaceholder: "Exam name",
         copyPracticeLink: "Copy practice link",
         copiedPracticeLink: "Copied link",
         addFromBank: "Add from bank",
@@ -126,6 +129,9 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         mode: "Chế độ",
         release: "Trả kết quả",
         importWarningTitle: "Cảnh báo import",
+        renameExam: "Đổi tên đề",
+        saveName: "Lưu tên",
+        examNamePlaceholder: "Tên đề",
         copyPracticeLink: "Copy link luyện tập",
         copiedPracticeLink: "Đã copy link",
         addFromBank: "Thêm từ ngân hàng",
@@ -149,6 +155,15 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
               <StatusBadge status={version.status} />
             </div>
             <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">{exam.description || text.subtitle}</p>
+            <details className="mt-3 max-w-2xl rounded-lg border border-slate-200 bg-slate-50">
+              <summary className="cursor-pointer list-none px-3 py-2 text-sm font-black text-indigo-800">{text.renameExam}</summary>
+              <form action={renameExamAction} className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-[1fr_auto]">
+                <input type="hidden" name="locale" value={locale} />
+                <input type="hidden" name="examId" value={exam.id} />
+                <Input name="title" defaultValue={exam.title} minLength={2} maxLength={160} placeholder={text.examNamePlaceholder} required />
+                <Button type="submit">{text.saveName}</Button>
+              </form>
+            </details>
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <Button asChild variant="outline">
