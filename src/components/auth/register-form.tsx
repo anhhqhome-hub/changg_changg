@@ -29,8 +29,9 @@ export function RegisterForm({
   currentAcademicYearName: string;
 }) {
   const [state, formAction, pending] = useActionState(registerStudentAction, initialState);
-  const [schoolId, setSchoolId] = useState("");
-  const [classId, setClassId] = useState("");
+  const firstAvailableSchool = schools.find((school) => school.classes.length > 0) ?? null;
+  const [schoolId, setSchoolId] = useState(firstAvailableSchool?.id ?? "");
+  const [classId, setClassId] = useState(firstAvailableSchool?.classes[0]?.id ?? "");
   const isEn = locale === "en";
 
   const selectedSchool = useMemo(
@@ -76,7 +77,8 @@ export function RegisterForm({
             value={schoolId}
             onChange={(event) => {
               setSchoolId(event.target.value);
-              setClassId("");
+              const nextSchool = schools.find((school) => school.id === event.target.value);
+              setClassId(nextSchool?.classes[0]?.id ?? "");
             }}
             required
             disabled={!hasAvailableClasses}
