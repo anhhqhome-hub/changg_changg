@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AssignExamModal } from "@/components/teacher/assign-exam-modal";
+import { DeleteExamButton } from "@/components/teacher/delete-draft-exam-button";
 import { PracticeShareLinkButton } from "@/components/teacher/practice-share-link-button";
 import { QuestionEditorForm } from "@/components/teacher/question-editor-form";
 import { QuestionSlideNavigator } from "@/components/teacher/question-slide-navigator";
@@ -105,6 +106,8 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         renameExam: "Rename exam",
         saveName: "Save name",
         examNamePlaceholder: "Exam name",
+        deleteExam: "Delete exam",
+        confirmDeleteExam: "Delete this exam permanently? Related assignments, attempts, and results will also be deleted.",
         copyPracticeLink: "Copy practice link",
         copiedPracticeLink: "Copied link",
         addFromBank: "Add from bank",
@@ -132,6 +135,8 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
         renameExam: "Đổi tên đề",
         saveName: "Lưu tên",
         examNamePlaceholder: "Tên đề",
+        deleteExam: "Xóa đề",
+        confirmDeleteExam: "Bạn có chắc muốn xóa vĩnh viễn đề này không? Các lượt giao, bài làm và kết quả liên quan cũng sẽ bị xóa.",
         copyPracticeLink: "Copy link luyện tập",
         copiedPracticeLink: "Đã copy link",
         addFromBank: "Thêm từ ngân hàng",
@@ -171,6 +176,7 @@ export default async function ExamBuilderPage({ params }: { params: Promise<{ lo
                 <Library className="h-4 w-4" /> {text.backBank}
               </Link>
             </Button>
+            <DeleteExamButton locale={locale} examId={exam.id} label={text.deleteExam} confirmMessage={text.confirmDeleteExam} />
             <AssignExamModal
               action={assignExamActionWithState}
               locale={locale}

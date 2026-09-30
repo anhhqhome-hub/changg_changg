@@ -1,12 +1,12 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { deleteDraftExamAction } from "@/actions/teacher-actions";
+import { deleteExamAction } from "@/actions/teacher-actions";
 import { Button } from "@/components/ui/button";
 
-export function DeleteDraftExamButton({ locale, examId, label, confirmMessage }: { locale: string; examId: string; label: string; confirmMessage: string }) {
+export function DeleteExamButton({ locale, examId, label, confirmMessage }: { locale: string; examId: string; label: string; confirmMessage: string }) {
   return (
-    <form action={deleteDraftExamAction} onSubmit={(event) => {
+    <form action={deleteExamAction} onSubmit={(event) => {
       if (!window.confirm(confirmMessage)) event.preventDefault();
     }}>
       <input type="hidden" name="locale" value={locale} />
@@ -17,3 +17,5 @@ export function DeleteDraftExamButton({ locale, examId, label, confirmMessage }:
     </form>
   );
 }
+
+export const DeleteDraftExamButton = DeleteExamButton;

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateExamModal } from "@/components/teacher/create-exam-modal";
 import { AiExamModal } from "@/components/teacher/ai-generation-modals";
-import { DeleteDraftExamButton } from "@/components/teacher/delete-draft-exam-button";
+import { DeleteExamButton } from "@/components/teacher/delete-draft-exam-button";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 
@@ -42,8 +42,8 @@ export default async function TeacherExamsPage({ params }: { params: Promise<{ l
         published: "published",
         questions: "bank questions",
         assignments: "assignments",
-        deleteDraft: "Delete draft",
-        confirmDelete: "Delete this draft permanently?",
+        deleteExam: "Delete exam",
+        confirmDelete: "Delete this exam permanently? Related assignments, attempts, and results will also be deleted.",
         noExams: "No exams yet. Start with a blank draft or import from Word/Excel."
       }
     : {
@@ -56,8 +56,8 @@ export default async function TeacherExamsPage({ params }: { params: Promise<{ l
         published: "đã xuất bản",
         questions: "câu trong kho",
         assignments: "lượt giao",
-        deleteDraft: "Xóa bản nháp",
-        confirmDelete: "Bạn có chắc muốn xóa vĩnh viễn bản nháp này không?",
+        deleteExam: "Xóa đề",
+        confirmDelete: "Bạn có chắc muốn xóa vĩnh viễn đề này không? Các lượt giao, bài làm và kết quả liên quan cũng sẽ bị xóa.",
         noExams: "Chưa có đề nào. Bắt đầu bằng bản nháp mới hoặc import từ Word/Excel."
       };
 
@@ -125,11 +125,9 @@ export default async function TeacherExamsPage({ params }: { params: Promise<{ l
                       <span>{exam._count.assignments} {text.assignments}</span>
                     </div>
                     </Link>
-                    {version?.status === "DRAFT" && exam._count.assignments === 0 ? (
-                      <div className="mt-3 border-t border-slate-100 pt-3">
-                        <DeleteDraftExamButton locale={locale} examId={exam.id} label={text.deleteDraft} confirmMessage={text.confirmDelete} />
-                      </div>
-                    ) : null}
+                    <div className="mt-3 border-t border-slate-100 pt-3">
+                      <DeleteExamButton locale={locale} examId={exam.id} label={text.deleteExam} confirmMessage={text.confirmDelete} />
+                    </div>
                   </article>
                 );
               })}
