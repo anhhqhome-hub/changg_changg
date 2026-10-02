@@ -57,7 +57,7 @@ async function quizziDocxBufferToMarkedTextOnce(buffer: Buffer) {
   // Mammoth does not keep those marks in raw text, so map both to <mark> first.
   const htmlResult = await mammoth.convertToHtml(
     { buffer },
-    { styleMap: ["u => mark", "b => mark"] }
+    { styleMap: ["u => mark", "b => strong"] }
   );
   return quizziHtmlToMarkedText(htmlResult.value);
 }
@@ -397,8 +397,15 @@ export function quizziHtmlToMarkedText(html: string) {
     .replace(/<mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<\/mark>((?:(?!<\/?p(?:\s[^>]*)?>)[\s\S])*?)<\/mark>/gi, (_match, before: string, underlined: string, after: string) => {
       return `${before}${boldStartMarker}${underlined}${boldEndMarker} ${correctMarker}${after}`;
     })
-    .replace(/<(?:mark|strong|b)(?:\s[^>]*)?>([\s\S]*?)<\/(?:mark|strong|b)>/gi, (_match, inner: string) => {
+    .replace(/<mark(?:\s[^>]*)?>([\s\S]*?)<\/mark>/gi, (_match, inner: string) => {
       return containsOptionRow(inner) ? inner : `${boldStartMarker}${inner}${boldEndMarker} ${correctMarker}`;
+    })
+    .replace(/<(?:strong|b)(?:\s[^>]*)?>([\s\S]*?)<\/(?:strong|b)>/gi, (_match, inner: string) => {
+      const visible = inner.replace(/<[^>]+>/g, "").trim();
+      if (/^[A-D]\s*[\.)]\s+\S/i.test(visible) && !containsOptionRow(inner)) {
+        return `${boldStartMarker}${inner}${boldEndMarker} ${correctMarker}`;
+      }
+      return `${boldStartMarker}${inner}${boldEndMarker}`;
     });
 
   return decodeBasicHtmlEntities(
@@ -421,7 +428,7 @@ function containsOptionRow(value: string) {
 function markCorrectOptionInRow(value: string, allowSimpleCorrectLabel: boolean) {
   const nestedLabel = /<mark>\s*<mark>\s*([A-D])\s*([\.)])?\s*<\/mark>\s*([\.)])?\s*<\/mark>/i;
   const hasNestedCorrectLabel = nestedLabel.test(value);
-  const marked = hasNestedCorrectLabel
+  let marked = hasNestedCorrectLabel
     ? value.replace(new RegExp(nestedLabel.source, "gi"), (_match, label: string, innerPunctuation: string, outerPunctuation: string) => {
         return `${label.toUpperCase()}${innerPunctuation || outerPunctuation || "."} ${correctMarker}`;
       })
@@ -430,7 +437,10 @@ function markCorrectOptionInRow(value: string, allowSimpleCorrectLabel: boolean)
     : value.replace(/<mark>\s*([A-D])\s*([\.)])([\s\S]*?)<\/mark>/gi, (_match, label: string, punctuation: string, rest: string) => {
         return `${label.toUpperCase()}${punctuation} ${correctMarker}${rest}`;
       });
-  return marked.replace(/<\/?mark>/gi, "");
+  marked = marked.replace(/<(?:strong|b)(?:\s[^>]*)?>\s*([A-D])\s*([\.)])\s+(\S[\s\S]*?)<\/(?:strong|b)>/gi, (_match, label: string, punctuation: string, rest: string) => {
+    return `${label.toUpperCase()}${punctuation} ${correctMarker}${rest}`;
+  });
+  return marked.replace(/<\/?mark>/gi, "").replace(/<\/?(?:strong|b)(?:\s[^>]*)?>/gi, "");
 }
 
 function containsOptionLabels(value: string) {

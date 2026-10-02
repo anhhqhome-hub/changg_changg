@@ -19,6 +19,7 @@ describe("Quizzi Word parser", () => {
       answer: "lifestyle",
       options: []
     });
+    expect(questions.slice(14, 20).map((question) => question.answer)).toEqual(["A", "A", "", "D", "C", "B"]);
   });
 
   it("parses normal A-D options and preserves underlined answer markers", () => {
@@ -83,7 +84,7 @@ Sample passage.
     const markedText = quizziHtmlToMarkedText(html);
     const questions = parseQuizziWordText(markedText);
 
-    expect(questions[0].options).toEqual(["first", "**second**", "third", "fourth"]);
+    expect(questions[0].options).toEqual(["first", "second", "third", "fourth"]);
     expect(questions[0].answer).toBe("B");
   });
 
