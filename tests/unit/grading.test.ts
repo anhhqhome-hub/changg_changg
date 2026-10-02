@@ -29,6 +29,7 @@ describe("automatic grading", () => {
   it("normalizes fill blank answers", () => {
     expect(isManualQuestion("FILL_BLANK")).toBe(false);
     expect(normalizeFillBlank("  Watch   videos ")).toBe("watch videos");
+    expect(normalizeFillBlank("hasn\u2019t taken")).toBe("hasn't taken");
     expect(
       gradeObjectiveAnswer(
         {
@@ -39,6 +40,21 @@ describe("automatic grading", () => {
           settingsJson: JSON.stringify({ caseSensitive: false, trimWhitespace: true })
         },
         { blankAnswers: [" Watch "] }
+      )
+    ).toBe(1);
+  });
+
+  it("accepts straight and curly apostrophe variants in fill blank answers", () => {
+    expect(
+      gradeObjectiveAnswer(
+        {
+          id: "q1",
+          questionType: "FILL_BLANK",
+          points: 1,
+          correctAnswersJson: JSON.stringify([["hasn\u2019t taken"]]),
+          settingsJson: JSON.stringify({ caseSensitive: false, trimWhitespace: true })
+        },
+        { blankAnswers: ["hasn't taken"] }
       )
     ).toBe(1);
   });

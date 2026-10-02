@@ -1,3 +1,6 @@
+import JSZip from "jszip";
+import mammoth from "mammoth";
+
 export type QuizziParsedQuestion = {
   groupKey: string;
   groupTitle: string;
@@ -24,6 +27,90 @@ type OptionMarker = { label: string; start: number; contentStart: number };
 const correctMarker = "[[QUIZZI_CORRECT]]";
 const boldStartMarker = "[[QUIZZI_BOLD_START]]";
 const boldEndMarker = "[[QUIZZI_BOLD_END]]";
+
+export async function parseQuizziDocxBuffer(buffer: Buffer): Promise<QuizziParsedQuestion[]> {
+  const markedText = await quizziDocxBufferToMarkedText(buffer);
+  return parseQuizziWordText(markedText);
+}
+
+export async function quizziDocxBufferToMarkedText(buffer: Buffer): Promise<string> {
+  let firstError: unknown;
+  try {
+    const markedText = await quizziDocxBufferToMarkedTextOnce(buffer);
+    if (parseQuizziWordText(markedText).length > 0) return markedText;
+  } catch (error) {
+    firstError = error;
+  }
+
+  const sanitized = await sanitizeDocxForMammoth(buffer);
+  if (sanitized) {
+    const markedText = await quizziDocxBufferToMarkedTextOnce(sanitized);
+    if (parseQuizziWordText(markedText).length > 0 || !firstError) return markedText;
+  }
+
+  if (firstError) throw firstError;
+  return "";
+}
+
+async function quizziDocxBufferToMarkedTextOnce(buffer: Buffer) {
+  // Quizzi-style Word files encode the correct choice with underline or bold.
+  // Mammoth does not keep those marks in raw text, so map both to <mark> first.
+  const htmlResult = await mammoth.convertToHtml(
+    { buffer },
+    { styleMap: ["u => mark", "b => mark"] }
+  );
+  return quizziHtmlToMarkedText(htmlResult.value);
+}
+
+async function sanitizeDocxForMammoth(buffer: Buffer) {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    let changed = false;
+
+    for (const path of Object.keys(zip.files)) {
+      if (path.startsWith("customXML/") || path.startsWith("customXml/") || path.startsWith("word/fonts/") || path === "word/_rels/fontTable.xml.rels") {
+        zip.remove(path);
+        changed = true;
+      }
+    }
+
+    changed = await patchXmlFile(zip, "[Content_Types].xml", (xml) =>
+      xml
+        .replace(/<Default\b[^>]*(?:Extension="(?:ttf|odttf)"|ContentType="(?:application\/x-font-ttf|application\/vnd\.openxmlformats-officedocument\.obfuscatedFont)")[^>]*\/>/gi, "")
+        .replace(/<Override\b[^>]*PartName="\/(?:customXML|customXml|word\/fonts)\/[^"]+"[^>]*\/>/gi, "")
+    ) || changed;
+
+    changed = await patchXmlFile(zip, "word/_rels/document.xml.rels", (xml) =>
+      xml
+        .replace(/<Relationship\b[^>]*Type="[^"]+\/customXml"[^>]*\/>/gi, "")
+        .replace(/<Relationship\b[^>]*Target="\.\.\/(?:customXML|customXml)\/[^"]+"[^>]*\/>/gi, "")
+        .replace(/<Relationship\b[^>]*Target="fonts\/[^"]+"[^>]*\/>/gi, "")
+    ) || changed;
+
+    changed = await patchXmlFile(zip, "word/settings.xml", (xml) =>
+      xml.replace(/<w:embedTrueTypeFonts\b[^>]*\/>/gi, "")
+    ) || changed;
+
+    changed = await patchXmlFile(zip, "word/fontTable.xml", (xml) =>
+      xml.replace(/<w:embed(?:Regular|Bold|Italic|BoldItalic)\b[^>]*\/>/gi, "")
+    ) || changed;
+
+    if (!changed) return null;
+    return Buffer.from(await zip.generateAsync({ type: "nodebuffer" }));
+  } catch {
+    return null;
+  }
+}
+
+async function patchXmlFile(zip: JSZip, path: string, patch: (xml: string) => string) {
+  const file = zip.file(path);
+  if (!file) return false;
+  const before = await file.async("string");
+  const after = patch(before);
+  if (after === before) return false;
+  zip.file(path, after);
+  return true;
+}
 
 export function parseQuizziWordText(text: string): QuizziParsedQuestion[] {
   if (!looksLikeQuizzi(text)) return [];

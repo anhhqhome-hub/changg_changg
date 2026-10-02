@@ -15,6 +15,9 @@ export type AnswerPayload = z.infer<typeof answerPayloadSchema>;
 
 export function normalizeFillBlank(value: string, trimWhitespace = true, caseSensitive = false) {
   let normalized = trimWhitespace ? value.trim() : value;
-  normalized = normalized.replace(/\s+/g, " ");
+  normalized = normalized
+    .normalize("NFKC")
+    .replace(/[\u2018\u2019\u02BC\uFF07`]/g, "'")
+    .replace(/\s+/g, " ");
   return caseSensitive ? normalized : normalized.toLocaleLowerCase("en-US");
 }

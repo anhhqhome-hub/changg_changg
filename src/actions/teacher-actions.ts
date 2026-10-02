@@ -3,7 +3,6 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import mammoth from "mammoth";
 import * as XLSX from "xlsx";
 import { z } from "zod";
 import type { QuestionType, Skill } from "@/generated/prisma/enums";
@@ -13,7 +12,7 @@ import { askTeacherAgent, generateQuestionsWithGroq, reviewImportedQuestionsWith
 import { prisma } from "@/lib/db";
 import { getOrCreateCurrentAcademicYear } from "@/lib/academic-year";
 import { requireRole } from "@/lib/permissions";
-import { cleanQuizziMarkup, parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
+import { cleanQuizziMarkup, parseQuizziWordText, quizziDocxBufferToMarkedText } from "@/lib/quizzi-import";
 import { parseJson } from "@/lib/utils";
 
 const localeSchema = z.string().default("vi");
@@ -1109,13 +1108,7 @@ async function parseExamImportFile(file: File) {
     return parseCsv(buffer.toString("utf8")).map(normalizeImportRow).filter(isImportedQuestion);
   }
   if (extension === "docx") {
-    // Quizzi-style Word files encode the correct choice with underline or bold.
-    // Mammoth does not keep those marks in raw text, so map both to <mark> first.
-    const htmlResult = await mammoth.convertToHtml(
-      { buffer },
-      { styleMap: ["u => mark", "b => mark"] }
-    );
-    const markedText = quizziHtmlToMarkedText(htmlResult.value);
+    const markedText = await quizziDocxBufferToMarkedText(buffer);
     const quizziQuestions = parseQuizziWordText(markedText);
     if (quizziQuestions.length > 0) {
       return quizziQuestions.map<ImportedQuestion>((question) => ({

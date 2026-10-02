@@ -1,7 +1,26 @@
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
+import { parseQuizziDocxBuffer, parseQuizziWordText, quizziHtmlToMarkedText } from "@/lib/quizzi-import";
 
 describe("Quizzi Word parser", () => {
+  const k10FixturePath = "C:/Users/AnhHQ02/Downloads/ĐỀ 2 - GK1 K10.docx";
+
+  it.skipIf(!existsSync(k10FixturePath))("imports the K10 Word file without requiring teachers to resave it", async () => {
+    const questions = await parseQuizziDocxBuffer(readFileSync(k10FixturePath));
+
+    expect(questions).toHaveLength(40);
+    expect(questions[0]).toMatchObject({
+      sourceNumber: "1",
+      answer: "B",
+      options: ["make", "divide", "give", "contribute"]
+    });
+    expect(questions[39]).toMatchObject({
+      sourceNumber: "40",
+      answer: "lifestyle",
+      options: []
+    });
+  });
+
   it("parses normal A-D options and preserves underlined answer markers", () => {
     const text = `
 [<g>] Read and choose [</g>]

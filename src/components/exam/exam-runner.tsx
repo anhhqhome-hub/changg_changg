@@ -9,6 +9,7 @@ import { QuestionRenderer, type RunnerAnswer, type RunnerQuestion } from "@/comp
 import { SaveIndicator } from "@/components/exam/save-indicator";
 import { Button } from "@/components/ui/button";
 import { RichText } from "@/components/ui/rich-text";
+import { normalizeFillBlank } from "@/domain/answers";
 
 export type RunnerSection = {
   id: string;
@@ -208,8 +209,12 @@ function practiceResult(question: RunnerQuestion, answer: RunnerAnswer, selected
     const expected: unknown = JSON.parse(question.correctAnswersJson);
     if (question.questionType.includes("FILL_BLANK")) {
       const answers = answer.blankAnswers ?? [];
-      const accepted = Array.isArray(expected) ? expected.flat(Infinity).map((item) => String(item).trim().toLocaleLowerCase()) : [];
-      return answers.every((item, index) => accepted[index] === (item ?? "").trim().toLocaleLowerCase());
+      if (!Array.isArray(expected) || answers.length < expected.length) return false;
+      return expected.every((acceptedForBlank, index) => {
+        const accepted = Array.isArray(acceptedForBlank) ? acceptedForBlank : [acceptedForBlank];
+        const actual = normalizeFillBlank(answers[index] ?? "");
+        return accepted.some((item) => normalizeFillBlank(String(item)) === actual);
+      });
     }
     if (question.questionType === "ORDERING") return JSON.stringify(answer.orderingAnswers ?? []) === JSON.stringify(expected);
     if (question.questionType === "MATCHING") return JSON.stringify(answer.matchingAnswers ?? {}) === JSON.stringify(expected);
