@@ -43,15 +43,15 @@ select {
   font: inherit;
 }
 
-.exam-runner {
-  touch-action: pan-y;
-}
-
-.exam-runner button,
-.exam-runner input,
-.exam-runner textarea,
-.exam-runner select,
-.exam-runner label {
+button,
+a,
+input,
+textarea,
+select,
+label,
+[role="button"],
+[role="menuitem"],
+summary {
   touch-action: manipulation;
 }
 
@@ -128,6 +128,12 @@ a {
 }
 
 @media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   .auth-stationery {
     height: 3.75rem;
     width: 3.75rem;
