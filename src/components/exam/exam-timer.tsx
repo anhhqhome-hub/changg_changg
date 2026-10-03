@@ -1,18 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock } from "lucide-react";
 
 export function ExamTimer({ expiresAt, onExpire }: { expiresAt: string | null; onExpire: () => void }) {
   const [remaining, setRemaining] = useState(() => getRemaining(expiresAt));
+  const onExpireRef = useRef(onExpire);
+  const expiredRef = useRef(false);
+
   useEffect(() => {
-    const interval = window.setInterval(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
+  useEffect(() => {
+    expiredRef.current = false;
+
+    const syncRemaining = () => {
       const next = getRemaining(expiresAt);
       setRemaining(next);
-      if (next <= 0 && expiresAt) onExpire();
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [expiresAt, onExpire]);
+      if (next <= 0 && expiresAt && !expiredRef.current) {
+        expiredRef.current = true;
+        onExpireRef.current();
+      }
+    };
+
+    syncRemaining();
+    const interval = window.setInterval(syncRemaining, 1000);
+    window.addEventListener("focus", syncRemaining);
+    window.addEventListener("pageshow", syncRemaining);
+    document.addEventListener("visibilitychange", syncRemaining);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", syncRemaining);
+      window.removeEventListener("pageshow", syncRemaining);
+      document.removeEventListener("visibilitychange", syncRemaining);
+    };
+  }, [expiresAt]);
   if (!expiresAt) return null;
   const minutes = Math.floor(Math.max(0, remaining) / 60);
   const seconds = Math.max(0, remaining) % 60;
