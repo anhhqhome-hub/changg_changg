@@ -91,6 +91,15 @@ export function ExamRunner({
     (update as unknown as { timer?: number }).timer = window.setTimeout(() => void save(currentQuestion.id, answer), 600);
   }
 
+  function goToQuestion(next: number | ((current: number) => number)) {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) active.blur();
+    setCurrent((value) => {
+      const resolved = typeof next === "function" ? next(value) : next;
+      return Math.min(questions.length - 1, Math.max(0, resolved));
+    });
+  }
+
   async function submit() {
     if (!window.confirm("Nộp bài ngay bây giờ?")) return;
     setSaveState("saving");
@@ -152,10 +161,10 @@ export function ExamRunner({
             <QuestionRenderer question={currentQuestion} answer={answers[currentQuestion.id] ?? {}} onChange={update} />
             {isPractice && hasAnswer(answers[currentQuestion.id]) ? <PracticeFeedback question={currentQuestion} answer={answers[currentQuestion.id] ?? {}} locale={locale} /> : null}
             <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
-              <Button type="button" variant="outline" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))}>
+              <Button type="button" variant="outline" disabled={current === 0} onClick={() => goToQuestion((value) => value - 1)}>
                 <ArrowLeft className="h-4 w-4" /> {locale === "vi" ? "Câu trước" : "Previous"}
               </Button>
-              <Button type="button" variant="secondary" disabled={current === questions.length - 1} onClick={() => setCurrent((value) => Math.min(questions.length - 1, value + 1))}>
+              <Button type="button" variant="secondary" disabled={current === questions.length - 1} onClick={() => goToQuestion((value) => value + 1)}>
                 {locale === "vi" ? "Câu tiếp" : "Next"} <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -163,13 +172,13 @@ export function ExamRunner({
         </section>
         <aside className="space-y-4">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <QuestionNavigator current={current} total={questions.length} answered={answered} flagged={flagged} onSelect={setCurrent} />
+            <QuestionNavigator current={current} total={questions.length} answered={answered} flagged={flagged} onSelect={goToQuestion} />
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" disabled={current === 0} onClick={() => setCurrent((value) => Math.max(0, value - 1))}>
+            <Button type="button" variant="outline" disabled={current === 0} onClick={() => goToQuestion((value) => value - 1)}>
               Previous
             </Button>
-            <Button type="button" variant="secondary" disabled={current === questions.length - 1} onClick={() => setCurrent((value) => Math.min(questions.length - 1, value + 1))}>
+            <Button type="button" variant="secondary" disabled={current === questions.length - 1} onClick={() => goToQuestion((value) => value + 1)}>
               Next
             </Button>
           </div>

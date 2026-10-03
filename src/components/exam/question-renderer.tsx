@@ -46,7 +46,7 @@ export function QuestionRenderer({
           value={answer.textAnswer ?? ""}
           onChange={(event) => onChange({ ...answer, textAnswer: event.target.value })}
           placeholder="Type your answer"
-          className="min-h-56"
+          className="min-h-56 text-base"
         />
         <p className="text-sm text-slate-600">{words} words</p>
       </div>
@@ -61,7 +61,7 @@ export function QuestionRenderer({
           <input
             key={index}
             aria-label={`Blank ${index + 1}`}
-            className="h-11 rounded-md border border-slate-300 px-3"
+            className="h-11 rounded-md border border-slate-300 px-3 text-base"
             value={blank}
             onChange={(event) => {
               const next = [...blanks];
