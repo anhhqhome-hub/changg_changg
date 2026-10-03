@@ -55,6 +55,11 @@ summary {
   touch-action: manipulation;
 }
 
+.exam-runner {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 a {
   color: inherit;
   text-decoration: none;
