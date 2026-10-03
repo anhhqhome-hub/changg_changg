@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro } from "next/font/google";
 import { notFound } from "next/navigation";
 import { Toaster } from "sonner";
 import "@/app/globals.css";
+import { ClientRecovery } from "@/components/app/client-recovery";
 import { isLocale, type Locale } from "@/i18n/config";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale as Locale} suppressHydrationWarning>
       <body className={beVietnam.className}>
+        <ClientRecovery />
         {children}
         <Toaster richColors position="top-center" />
       </body>

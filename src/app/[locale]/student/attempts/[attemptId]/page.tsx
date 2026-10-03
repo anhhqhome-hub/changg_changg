@@ -3,6 +3,10 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/permissions";
 import { parseJson } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
 export default async function AttemptPage({ params }: { params: Promise<{ locale: string; attemptId: string }> }) {
   const { locale, attemptId } = await params;
   const student = await requireRole("STUDENT", locale);
